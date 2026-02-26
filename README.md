@@ -76,7 +76,7 @@ git clone https://github.com/Wonikrobotics-git/allegro_hand_ros2_V5_Sense.git
 
 # Build the workspace
 cd ~/allegro_ws
-source /opt/ros/<distro>/setup.bash
+source /opt/ros/humble/setup.bash
 colcon build
 ```
 
@@ -117,7 +117,7 @@ ros2 run allegro_hand_keyboards allegro_hand_keyboard
 ```
 
 ## 🛠️ How to Use Hand Easily
-### 📉 PD Gain Tuning (Fixing Vibrations)
+### 📉 PD Gain Tuning (Fixing Vibrations or Fine Tuning)
 Depending on the specific commands or motor states, the default gain values might cause vibrations during operation. 
 
 To resolve this and optimize performance, you can tune the gains for the `joint_cmd` topic:
