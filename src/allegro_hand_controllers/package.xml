@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<package format="3">
+    <name>allegro_hand_controllers</name>
+    <version>2.0.0</version>
+    <description>
+      Allegro Hand controllers package.
+      CAN communication and BHand-based grasp control (legacy node).
+    </description>
+
+    <maintainer email="sh-yang@wonik.com">Hibo</maintainer>
+    <license>BSD</license>
+
+    <!-- Build tools -->
+    <buildtool_depend>ament_cmake</buildtool_depend>
+    <buildtool_depend>ament_cmake_python</buildtool_depend>
+
+    <!-- Core dependencies -->
+    <depend>rclcpp</depend>
+    <depend>rclpy</depend>
+    <depend>sensor_msgs</depend>
+    <depend>std_msgs</depend>
+    <depend>robot_state_publisher</depend>
+    <depend>yaml_cpp_vendor</depend>
+    <depend>launch</depend>
+    <depend>launch_ros</depend>
+
+    <!-- Hardware dependencies -->
+    <depend>allegro_hand_driver</depend>
+    <depend>bhand</depend>
+    <depend>ament_index_cpp</depend>
+
+    <!-- The export tag contains other, unspecified, tags -->
+    <export>
+        <build_type>ament_cmake</build_type>
+    </export>
+</package>
