@@ -1,192 +1,168 @@
-# allegro_hand_ros2_V5_Sense
+# 🖐️ allegro_hand_ros2_V5_Sense
 
-This is the official release to control Allegro Hand V5 Sense with ROS2(**Only V5 Sense supported**). Mostly, it is based on the release of Allegro Hand V5 ROS2 package.
-You can find our latest Allegro Hand V5 ROS2 package :(https://github.com/Wonikrobotics-git/allegro_hand_ros2_v5)
-And the interfaces and controllers have been improved and rewritten by Soohoon Yang(Hibo) from Wonik Robotics.
+![ROS2](https://img.shields.io/badge/ROS2-Humble-blue) ![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04-orange) ![Support](https://img.shields.io/badge/Support-V5%20Sense%20Only-red)
 
-We have integrated the core elements of two ROS packages(allegro_hand_description, allegro_hand_parameters) into a main package(allegro_hand_controllers).
+This is the official release to control **Allegro Hand V5 Sense** with ROS2. It is optimized for torque-based control and features improved interfaces and controllers developed by Soohoon Yang(Hibo) in Wonik Robotics.
 
-**For now, we support three additional action.**
-- Visualize Allegro Hand V5 changing in real time using Rviz2.
-- Simply control hand with **GUI** tool instead of using keyboard.
-- Support **Gain tuning** systems.
-- Save **Custom Joint Position** and Load. 
+> [!IMPORTANT]  
+> This package **Only supports V5 Sense**. For the standard V5 model, please visit the [Allegro Hand V5 ROS2 repository](https://github.com/Wonikrobotics-git/allegro_hand_ros2_v5).
 
-These packages are tested on ROS2 Humble(Ubuntu 22.04). It will likely not work with newer or older versions.
+---
 
-## Useful Links
-- Official Allegro Hand Website : https://www.allegrohand.com/
-- Community Forum :  https://www.allegrohand.com/forum
+## ✨ Key Features
+* **Real-time Visualization:** Monitor Allegro Hand V5 state in real-time using Rviz2.
+* **GUI Control:** Simple hand control via a GUI tool (replaces keyboard input).
+* **Gain Tuning System:** Integrated support for tuning motor gains.
+* **Custom Poses:** Easily save and load custom joint positions.
 
-## Summary
-- Explain Packages.
-- Topic description.
-- Run main controller nodes.
-- How to Use Hand easily.
-- Control more than one hand.
+---
 
-## Packages
+## 📦 Packages
 
-**From Allegro Hand V5 Sense, the hand is fully based on torque controller.** 
+| Package Name | Description |
+| :--- | :--- |
+| **`allegro_hand_controllers`** | Main nodes for control, URDF descriptions, and meshes. |
+| **`allegro_hand_driver`** | Main driver for CAN communication with the Allegro Hand. |
+| **`allegro_hand_keyboard`** | Node for pre-defined keyboard commands. |
+| **`allegro_hand_gui`** | GUI-based control program. |
+| **`bhand`** | Library for pre-defined grasps (Default: x86-64). |
 
-- allegro_hand_controllers : Contain two main nodes for control the hand and urdf descriptions,meshes.
-	- node : Receive encoder data and compute torque using `computeDesiredTorque`.
-	- grasp : Apply various pre-defined grasps or customized poses.
-- allegro_hand_driver : Main driver for sending and receiving data with the Allegro Hand.
-- allegro_hand_keyboard : Node that sends the command to control Allegro Hand. All commands need to be pre-defined.
-- allegro_hand_gui : Node that control the allegro hand with gui program.
-- bhand : Library files for the predefined grasps and actions, available on 64 bit versions.
-  - ⚠ **Default: x86-64-bit.** If using a **ARM64**, update the symlink accordingly from [here](https://github.com/Wonikrobotics-git/Bhandlib_ARM). (Will be Update Soon)
+> [!TIP]
+> **For ARM64 (e.g., Jetson):** If using an ARM-based system, update the symlink using [this repository](https://github.com/Wonikrobotics-git/Bhandlib_ARM).(Will be Update Soon)
 
-## Topic description
+---
 
-- Control
-	- /allegroHand_(NUM)/lib_cmd :  Hand command.
- 	- /allegroHand_(NUM)/joint_cmd : Desired hand joint positions and control REAL Allegro Hand.
-  - /allegroHand_(NUM)/force_chg : Change grasp force of grasping algorithm(grasp_3, grasp_4).
-  - /allegroHand_(NUM)/time_chg : Change time of moving target positions of each joints.
-  - /allegroHand_(NUM)/envelop_torque : Change torque of envelop command.
-- Joint States
-  - /allegroHand_(NUM)/joint_states : REAL Allegro Hand current joint positions.
-    - Joint Numbering Order
+## 🔢 Topic Description & Data Structure
 
-The `Joint Num` sequence consists of 16 joints, ordered as follows:
+### Joint Numbering Order
+The `Joint Num` sequence consists of 16 joints (0~15) in the following order:
 
 | Index Range | Finger | Sequence |
 | :--- | :--- | :--- |
-| `0 ~ 3` | **Index Finger** | Joint 1(base), Joint 2, Joint 3, Joint 4(tip) |
-| `4 ~ 7` | **Middle Finger** | Joint 1(base), Joint 2, Joint 3, Joint 4(tip) |
-| `8 ~ 11` | **Pinky Finger** | Joint 1(base), Joint 2, Joint 3, Joint 4(tip) |
-| `12 ~ 15` | **Thumb** | Joint 1(base), Joint 2, Joint 3, Joint 4(tip) |
-- Sensors
-  - /allegroHand_(NUM)/tactile_sensors : REAL Allegro Hand current tactile sensors datas.
-    - Joint Numbering Order
-The `Sensor` sequence consists of 16 sensors(including Palm sensor), ordered as follows:
+| `0 ~ 3` | **Index Finger** | Joint 1 (Base), 2, 3, 4 (Tip) |
+| `4 ~ 7` | **Middle Finger** | Joint 1 (Base), 2, 3, 4 (Tip) |
+| `8 ~ 11` | **Ring Finger** | Joint 1 (Base), 2, 3, 4 (Tip) |
+| `12 ~ 15` | **Thumb** | Joint 1 (Base), 2, 3, 4 (Tip) |
 
-| Index Range | Finger | Sequence |
+### Tactile Sensor Mapping
+The sensor sequence consists of 16 sensors (including the Palm):
+
+| Index Range | Finger / Part | Sequence |
 | :--- | :--- | :--- |
-| `0 ~ 3` | **Thumb** | Palm Sensor, Thumb madi Sensor 1, Thumb madi Sensor 2, Thumb Finger tip Sensor|
-| `4 ~ 7` | **Index Finger** | Index Finger madi Sensor 1, Index Finger madi Sensor 2, Index Finger madi Sensor 3, , Index Fingertip Sensor  |
-| `8 ~ 11` | **Middle Finger** | Middle Finger madi Sensor 1, Middle Finger madi Sensor 2, Middle Finger madi Sensor 3, , Middle Fingertip Sensor |
-| `12 ~ 15` | **Pinky Finger** | Pinky Finger madi Sensor 1, Pinky Finger madi Sensor 2, Pinky Finger madi Sensor 3, , Pinky Fingertip Sensor |   
+| `0 ~ 3` | **Thumb & Palm** | Palm, Thumb Madi 1, 2, Thumb Tip |
+| `4 ~ 7` | **Index Finger** | Index Madi 1, 2, 3, Index Tip |
+| `8 ~ 11` | **Middle Finger** | Middle Madi 1, 2, 3, Middle Tip |
+| `12 ~ 15` | **Ring Finger** | Ring Madi 1, 2, 3, Ring Tip |
 
-**With ROS2, you don't need to install PCAN driver anymore!**
+---
 
-If you have already installed PCAN driver, please follow instructions below.
-- [Optional] Disable previously installed PEAK-CAN driver.
-~~~bash
-# Temporarily
-sudo rmmod pcan
-sudo modprobe peak_usb
+## 🚀 Installation & Build
 
-# Permanent
-sudo rm /etc/modprobe.d/pcan.conf
-sudo rm /etc/modprobe.d/blacklist-peak.conf
-~~~
-
-## Run main controller nodes
-
-1. Make new workspace.
-~~~bash
-mkdir allegro_ws
-~~~
-
-2. Install necessart package.
-~~~bash
+### 1. Prerequisites
+```bash
 sudo apt-get update
-sudo apt-get install ros-<distro>-xacro
-sudo apt install ros-<distro>-moveit
-sudo apt install ros-<distro>-controller-manager
-sudo apt install ros-<distro>-joint-state-broadcaster
-sudo apt install ros-<distro>-joint-trajectory-controller
-~~~
+sudo apt-get install ros-humble-xacro ros-humble-moveit \
+ros-humble-controller-manager ros-humble-joint-state-broadcaster \
+ros-humble-joint-trajectory-controller
+```
 
-3. Download ROS2 package for Allegro Hand V5 using below command.
-~~~bash
-cd ~/allegro_ws
+### 2. Workspace Setup
+```bash
+# Create a new workspace
+mkdir -p ~/allegro_ws/src && cd ~/allegro_ws/src
+
+# Download the ROS2 package for Allegro Hand V5 Sense
 git clone https://github.com/Wonikrobotics-git/allegro_hand_ros2_V5_Sense.git
-~~~
 
-4. Build.
-~~~bash
+# Build the workspace
 cd ~/allegro_ws
 source /opt/ros/<distro>/setup.bash
 colcon build
-~~~
+```
 
-5. Launch allegro main node.
-~~~bash
+## 🚀 Running the Controller
+
+## 1. Launch Main Node
+You can control the Allegro Hand by launching the `allegro_hand.launch.py` file.  
+You must specify the handedness (right or left).
+
+```bash
 source install/setup.bash
 ros2 launch allegro_hand_controllers allegro_hand.launch.py HAND:=right
-~~~
-**You need to write your password to open CAN port**
+```
+### ⚙️ Optional Arguments
 
-**Please check 'Launch file instructions below'.**
+You can customize the launch by adding optional arguments. By default, these are set to `false`.
 
-6. Run allegro hand keyboard node.
-~~~bash
-cd ~/allegro_ws
+| Argument | Description | Default |
+| :--- | :--- | :--- |
+| **`VISUALIZE:=true`** | Launch **Rviz2** for real-time hand visualization. | `false` |
+| **`GUI:=true`** | Launch the **GUI Control Tool** instead of using the keyboard. | `false` |
+
+#### Example Commands:
+
+* **To visualize the Allegro Hand on Rviz2:**
+  ```bash
+  ros2 launch allegro_hand_controllers allegro_hand.launch.py HAND:=right VISUALIZE:=true
+  ```
+* **To control the Allegro HAnd with the GUI tool:**
+  ```bash
+  ros2 launch allegro_hand_controllers allegro_hand.launch.py HAND:=right GUI:=true
+  ```
+## 2. Run Keyboard Node
+To send pre-defined commands using your keyboard:
+```bash
 source install/setup.bash
 ros2 run allegro_hand_keyboards allegro_hand_keyboard
-~~~
+```
 
-7. Control Hand using Keyboard command.
+## 🛠️ How to Use Hand Easily
+### 📉 PD Gain Tuning (Fixing Vibrations)
+Depending on the specific commands or motor states, the default gain values might cause vibrations during operation. 
 
-## Launch file instructions
+To resolve this and optimize performance, you can tune the gains for the `joint_cmd` topic:
+1. Open `allegro_node_grasp.cpp`.
+2. Locate the **`kp`** (Proportional) and **`kd`** (Derivative) variables.
+3. Modify the values, rebuild the package, and test to find the most stable parameters for your setup.
 
-Same as the ROS1 package, you can simply control Allegro Hand V5 by launching *allegro_hand.launch.py* . At a minimum, you must specify the handedness and the hand type:
-~~~bash
-ros2 launch allegro_hand_controllers allegro_hand.launch.py HAND:=right|left
-~~~
+### 💾 Creating and Executing Custom Poses
+You can quickly create, save, and execute custom hand poses by following these steps:
 
-Optional arguments:
-~~~
-VISUALIZE:=true|false (default is false)
-GUI:=true|false (default is false)
-~~~
+1. **Create a Configuration File:** Create a new `.yaml` file within the `allegro_hand_controllers` package. (Please refer to `example.yaml` for formatting rules).
+2. **Define Joint Angles:** Define the target angles for all 16 joints in the specific **Joint Numbering Order** mentioned above.
+3. **Build and Execute:** After creating the file and building your workspace, you can command the hand using the `lib_cmd` topic:
+   * **Topic:** `allegroHand_(NUM)/lib_cmd`
+   * **Command:** Send the **name of your YAML file** (without the `.yaml` extension).
+   
+The hand will automatically generate a smooth trajectory to reach the target pose.
 
-- If you want to visualize Allegro Hand on Rviz2:
-~~~bash
-ros2 launch allegro_hand_controllers allegro_hand.launch.py HAND:=right VISUALIZE:=true
-~~~
+### ⚠️ Important: Naming & Timing Constraints
+To ensure stable and safe movement, please keep the following in mind:
 
-- If you want to control Allegro Hand with GUI:
-~~~bash
-ros2 launch allegro_hand_controllers allegro_hand.launch.py HAND:=right GUI:=true
-~~~
+* **Avoid Reserved Names:** Do **NOT** use names already reserved for default poses (e.g., `"home"`). Duplicate names may cause system conflicts.
+* **Motion Duration:** The default trajectory time is set to approximately **1.2 seconds**.
+* **Avoid Overlapping Commands:** If a new command is received while the hand is still moving, it may result in unintended or erratic behavior.
+* **Safety Buffer:** Ensure a minimum delay of at least **1.2 seconds** between consecutive commands.
 
-## Control more than one hand
+## 🤝 Control more than one hand
+To control more than one hand, you must specify the **CAN port number** and the **Allegro Hand number** (`NUM`) during the launch.
 
-To control more than one hand, you must specify CAN port number and Allegro Hand number.
-
-Terminal 1:
-~~~bash
+#### Terminal 1: Launch Hand 0 (Right)
+```bash
 ros2 launch allegro_hand_controllers allegro_hand.launch.py HAND:=right CAN_DEVICE:=can0 NUM:=0
-~~~
+```
 
-Termianl 2:
-~~~bash
+#### Terminal 2: Launch Hand 1 (Left)
+```bash
 ros2 launch allegro_hand_controllers allegro_hand.launch.py HAND:=left CAN_DEVICE:=can1 NUM:=1
-~~~
+```
+>[!NOTE]
+>These are example commands. You may need to change CAN_DEVICE, PORT, and NUM arguments according to your specific hardware setup.
 
-To control first hand,
-
-Terminal 3:
-~~~bash
-ros2 run allegro_hand_keyboards allegro_hand_keyboard --ros-args allegroHand_0/lib_cmd:=allegroHand_0/lib_cmd
-~~~
-
-To control second hand,
-
-Terminal 4:
-~~~bash
-ros2 run allegro_hand_keyboards allegro_hand_keyboard --ros-args allegroHand_0/lib_cmd:=allegroHand_1/lib_cmd
-~~~
-
-**These are example commands.You may need to change CAN_DEVICE, PORT and NUM arguments according to your system.**
-
-## GUI
-
-These newly added feature function identically to their ROS1 counterparts. Please refer to the ROS1 manual for guidance.
-Our latest Allegro Hand V5 ROS1 package : [ROS1](https://github.com/Wonikrobotics-git/allegro_hand_ros_v5)
-
+---
+## 🔗 Useful Links
+* **Official Allegro Hand Website:** [https://www.allegrohand.com/](https://www.allegrohand.com/)
+* **Community Forum:** [https://www.allegrohand.com/forum](https://www.allegrohand.com/forum)
+* **Allegro Hand V5 ROS1 Package:** [Wonik Robotics GitHub](https://github.com/Wonikrobotics-git/allegro_hand_ros_v5)
+* **Bhandlib for ARM64:** [Bhandlib_ARM Repository](https://github.com/Wonikrobotics-git/Bhandlib_ARM)
+   
