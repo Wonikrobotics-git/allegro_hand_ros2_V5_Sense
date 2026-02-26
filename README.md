@@ -18,6 +18,13 @@ These packages are tested on ROS2 Humble(Ubuntu 22.04). It will likely not work 
 - Official Allegro Hand Website : https://www.allegrohand.com/
 - Community Forum :  https://www.allegrohand.com/forum
 
+## Summary
+- Explain Packages.
+- Topic description.
+- Run main controller nodes.
+- How to Use easily.
+- Control more than one hand.
+
 ## Packages
 
 **From Allegro Hand V5 Sense, the hand is fully based on torque controller.** 
@@ -30,8 +37,8 @@ These packages are tested on ROS2 Humble(Ubuntu 22.04). It will likely not work 
 - allegro_hand_gui : Node that control the allegro hand with gui program.
 - bhand : Library files for the predefined grasps and actions, available on 64 bit versions.
   - ⚠ **Default: x86-64-bit.** If using a **ARM64**, update the symlink accordingly from [here](https://github.com/Wonikrobotics-git/Bhandlib_ARM). (Will be Update Soon)
-  
-  ## Topic description
+
+## Topic description
 
 - Control
 	- /allegroHand_(NUM)/lib_cmd :  Hand command.
@@ -41,9 +48,27 @@ These packages are tested on ROS2 Humble(Ubuntu 22.04). It will likely not work 
   - /allegroHand_(NUM)/envelop_torque : Change torque of envelop command.
 - Joint States
   - /allegroHand_(NUM)/joint_states : REAL Allegro Hand current joint positions.
-  - /allegroHand_sim/joint_states : ISAAC SIM Allegro Hand current joint positions.
+    - Joint Numbering Order
+
+The `Joint Num` sequence consists of 16 joints, ordered as follows:
+
+| Index Range | Finger | Sequence |
+| :--- | :--- | :--- |
+| `0 ~ 3` | **Index Finger** | Joint 1(base), Joint 2, Joint 3, Joint 4(tip) |
+| `4 ~ 7` | **Middle Finger** | Joint 1(base), Joint 2, Joint 3, Joint 4(tip) |
+| `8 ~ 11` | **Pinky Finger** | Joint 1(base), Joint 2, Joint 3, Joint 4(tip) |
+| `12 ~ 15` | **Thumb** | Joint 1(base), Joint 2, Joint 3, Joint 4(tip) |
 - Sensors
-  - /allegroHand_(NUM)/tactile_sensors : REAL tactile sensors data {Finger1(Index),Finger2(Middle),Finger3(Pinky),Finger4(Thumb)}.
+  - /allegroHand_(NUM)/tactile_sensors : REAL Allegro Hand current tactile sensors datas.
+    - Joint Numbering Order
+The `Sensor` sequence consists of 16 sensors(including Palm sensor), ordered as follows:
+
+| Index Range | Finger | Sequence |
+| :--- | :--- | :--- |
+| `0 ~ 3` | **Thumb** | Palm Sensor, Thumb madi Sensor 1, Thumb madi Sensor 2, Thumb Finger tip Sensor|
+| `4 ~ 7` | **Index Finger** | Index Finger madi Sensor 1, Index Finger madi Sensor 2, Index Finger madi Sensor 3, , Index Fingertip Sensor  |
+| `8 ~ 11` | **Middle Finger** | Middle Finger madi Sensor 1, Middle Finger madi Sensor 2, Middle Finger madi Sensor 3, , Middle Fingertip Sensor |
+| `12 ~ 15` | **Pinky Finger** | Pinky Finger madi Sensor 1, Pinky Finger madi Sensor 2, Pinky Finger madi Sensor 3, , Pinky Fingertip Sensor |   
 
 **With ROS2, you don't need to install PCAN driver anymore!**
 
@@ -111,7 +136,7 @@ ros2 run allegro_hand_keyboards allegro_hand_keyboard
 
 Same as the ROS1 package, you can simply control Allegro Hand V5 by launching *allegro_hand.launch.py* . At a minimum, you must specify the handedness and the hand type:
 ~~~bash
-ros2 launch allegro_hand_controllers allegro_hand.launch.py HAND:=right|left TYPE:=A|B
+ros2 launch allegro_hand_controllers allegro_hand.launch.py HAND:=right|left
 ~~~
 
 Optional arguments:
