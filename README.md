@@ -22,7 +22,7 @@ These packages are tested on ROS2 Humble(Ubuntu 22.04). It will likely not work 
 - Explain Packages.
 - Topic description.
 - Run main controller nodes.
-- How to Use easily.
+- How to Use Hand easily.
 - Control more than one hand.
 
 ## Packages
