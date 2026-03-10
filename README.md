@@ -5,7 +5,7 @@
 This is the official release to control **Allegro Hand V5 Sense** with ROS2. It is optimized for torque-based control and features improved interfaces and controllers developed by Soohoon Yang(Hibo) in Wonik Robotics.
 
 > [!IMPORTANT]  
-> This package **Only supports V5 Sense**. For the standard V5 model, please visit the [Allegro Hand V5 ROS2 repository](https://github.com/Wonikrobotics-git/allegro_hand_ros2_v5).
+> This package **Only supports V5 Sense**. For the V5 Plus model, please visit the [Allegro Hand V5 ROS2 repository](https://github.com/Wonikrobotics-git/allegro_hand_ros2_v5).
 
 ---
 
