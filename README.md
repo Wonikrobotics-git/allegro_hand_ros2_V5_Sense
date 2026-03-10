@@ -56,6 +56,46 @@ The sensor sequence consists of 16 sensors (including the Palm):
 
 ---
 
+### Internal Data Structures
+
+The following internal variables are used to store joint and sensor data within the `AllegroNode` and `AllegroHandDrv` classes:
+
+| Data Type | Variable Key | Class | Description |
+| :--- | :--- | :--- | :--- |
+| **Joint Angles** | `current_position[16]` | `AllegroNode` | Raw joint angles (radians) received from CAN. |
+| **Filtered Angles** | `current_position_filtered[16]` | `AllegroNode` | Smoothed joint angles used for control and publishing. |
+| **Tactile (Palm)** | `palm_sensor` | `AllegroHandDrv` | Pressure value for the palm sensor. |
+| **Tactile (Madi)** | `madi_sensor[11]` | `AllegroHandDrv` | Pressure values for the finger segments. |
+| **Tactile (Tip)** | `fingertip_sensor[4]` | `AllegroHandDrv` | Pressure values for the four fingertips. |
+
+---
+
+## 🔍 Logging & Debugging
+
+### 1. Command Line Logging (ROS 2 CLI)
+You can monitor the joint data and sensor values directly from the terminal:
+
+*   **To echo joint states:**
+    ```bash
+    ros2 topic echo /allegroHand/joint_states
+    ```
+*   **To echo tactile sensor data:**
+    ```bash
+    ros2 topic echo /allegroHand/tactile_sensors
+    ```
+
+### 2. C++ Code Logging Example
+If you want to log data within the source code (e.g., for debugging in `allegro_node.cpp`), use `RCLCPP_INFO`:
+
+```cpp
+// Example: Logging specific joint angles (Joint 0 and Joint 4)
+RCLCPP_INFO(this->get_logger(), "Joint 0: %.3f, Joint 4: %.3f", 
+            current_position_filtered[0], current_position_filtered[4]);
+
+// Example: Logging tactile sensor values
+RCLCPP_INFO(this->get_logger(), "Palm: %.1f, Thumb Tip: %.1f", 
+            palm_sensor, fingertip_sensor[0]);
+```
 ## 🚀 Installation & Build
 
 ### 1. Prerequisites
