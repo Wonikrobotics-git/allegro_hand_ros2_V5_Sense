@@ -26,6 +26,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
+## CAN driver library (original)
 add_library(allegro_hand_driver
   src/AllegroHandDrv.cpp
   src/candrv/socket_can.cpp
@@ -34,11 +35,21 @@ add_library(allegro_hand_driver
 ament_target_dependencies(allegro_hand_driver
   rclcpp
   std_msgs)
+
+## Ethernet driver library (UDP-only on port 7000)
+add_library(allegro_hand_tcp_driver
+  src/AllegroHandTcpDrv.cpp
+  src/tcpdrv/socket_udp.cpp
+)
+
+ament_target_dependencies(allegro_hand_tcp_driver
+  rclcpp
+  std_msgs)
 #############
 ## Install ##
 #############
 
-install(TARGETS allegro_hand_driver
+install(TARGETS allegro_hand_driver allegro_hand_tcp_driver
         EXPORT allegro_hand_driver_export
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib
@@ -54,6 +65,12 @@ install(
 install(
   DIRECTORY src/candrv/
   DESTINATION include/candrv
+  FILES_MATCHING PATTERN "*.h")
+
+## Install tcpdrv headers so dependents can #include "tcpdrv/tcpdrv.h"
+install(
+  DIRECTORY src/tcpdrv/
+  DESTINATION include/tcpdrv
   FILES_MATCHING PATTERN "*.h")
 
 ament_export_targets(allegro_hand_driver_export HAS_LIBRARY_TARGET)

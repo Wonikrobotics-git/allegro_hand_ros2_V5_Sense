@@ -671,7 +671,20 @@
      <height>22</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="actionGainTuning"/>
+   </widget>
+   <addaction name="menuTools"/>
   </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionGainTuning">
+   <property name="text">
+    <string>Gain Tuning Panel</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>

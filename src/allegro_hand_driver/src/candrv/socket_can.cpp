@@ -181,8 +181,25 @@ int canSendMsg(void* ch, int id, char len, unsigned char *data, int blocking, in
         RCLCPP_WARN_ONCE(rclcpp::get_logger(__FILE__), "Socket CAN does not support blocking send, proceeed with nonblocking");
     }
     return 0;
-    printf("Sending Msg\n");
 }
+
+int canSendMsgRaw(void* ch, int id, char len, unsigned char *data, int blocking, int timeout_usec){
+    can_frame msg;
+    memcpy(msg.data, data, len);
+    msg.can_dlc = len;
+    msg.can_id = id; // Raw ID, no shift.
+    int result = write(socket_, &msg, sizeof(can_frame));
+    if (result != sizeof(can_frame))
+    {
+        RCLCPP_WARN(rclcpp::get_logger(__FILE__), "Failed to send raw CAN message: %s", strerror(errno));
+        return -1;
+    }
+    if (blocking || timeout_usec < 0) {
+        RCLCPP_WARN_ONCE(rclcpp::get_logger(__FILE__), "Socket CAN does not support blocking send, proceeed with nonblocking");
+    }
+    return 0;
+}
+
 int canSentRTR(void* ch, int id, int blocking, int timeout_usec){
     can_frame msg;
     msg.can_dlc = 0;
@@ -225,10 +242,12 @@ int command_can_flush(void* ch)
     }
     return 0;
 }
+
 int command_can_reset(void* ch)
 {
     return -1;
 }
+
 int command_can_close(void* ch)
 {
     int err;
@@ -239,11 +258,13 @@ int command_can_close(void* ch)
     }
     return 0; // PCAN_ERROR_OK
 }
+
 int command_can_set_id(void* ch, unsigned char can_id)
 {
     CAN_ID = can_id;
     return 0; //PCAN_ERROR_OK;
 }
+
 int command_servo_on(void* ch)
 {
     long Txid;
@@ -253,6 +274,7 @@ int command_servo_on(void* ch)
     ret = canSendMsg(ch, Txid, 0, data, TRUE, 0);
     return ret;
 }
+
 int command_servo_off(void* ch)
 {
     long Txid;
@@ -263,32 +285,14 @@ int command_servo_off(void* ch)
     return ret;
 }
 
-int command_pick(void* ch)
+
+int command_calibration(void* ch)
 {
-
-	long Txid;
-	unsigned char data[8];
-	int ret;
-
-	Txid = ID_CMD_PICK_STATUS;
-	ret = canSendMsg(ch, Txid, 0, data, TRUE, 0);
-    //printf("bye\n\n");
-	return ret;
+    long Txid;
+    unsigned char data[8];
+    Txid = ID_CMD_Position_Calibration_S;
+    return canSendMsg(ch, Txid, 0, data, TRUE, 0);
 }
-
-int command_place(void* ch)
-{
-
-	long Txid;
-	unsigned char data[8];
-	int ret;
-
-	Txid = ID_CMD_PLACE_STATUS;
-	ret = canSendMsg(ch, Txid, 0, data, TRUE, 0);
-    //printf("hi\n\n");
-	return ret;
-}
-
 
 int command_set_torque(void* ch, int findex, short* pwm)
 {
@@ -314,6 +318,7 @@ int command_set_torque(void* ch, int findex, short* pwm)
         return -1;
     return ret;
 }
+
 int command_set_pose(void* ch, int findex, short* jposition)
 {
     assert(findex >= 0 && findex < NUM_OF_FINGERS);
@@ -337,6 +342,33 @@ int command_set_pose(void* ch, int findex, short* jposition)
         return -1;
     return ret;
 }
+
+// H-inf firmware expects position target frames at wire CAN IDs
+// 0x180/0x184/0x188/0x18C for index/middle/little/thumb. Note that these
+// wire IDs coincide with (0x60 + findex) << 2, i.e. the same wire IDs the
+// legacy torque command uses — the firmware disambiguates by mode. So we
+// route this through the same canSendMsg write path that command_set_torque
+// uses every cycle, instead of a hand-rolled write.
+int command_set_pose_direct(void* ch, int findex, short* jposition)
+{
+    assert(findex >= 0 && findex < NUM_OF_FINGERS);
+    if (findex < 0 || findex >= NUM_OF_FINGERS) return -1;
+
+    unsigned char data[8];
+    data[0] = (unsigned char)( (jposition[0]     ) & 0x00ff);
+    data[1] = (unsigned char)( (jposition[0] >> 8) & 0x00ff);
+    data[2] = (unsigned char)( (jposition[1]     ) & 0x00ff);
+    data[3] = (unsigned char)( (jposition[1] >> 8) & 0x00ff);
+    data[4] = (unsigned char)( (jposition[2]     ) & 0x00ff);
+    data[5] = (unsigned char)( (jposition[2] >> 8) & 0x00ff);
+    data[6] = (unsigned char)( (jposition[3]     ) & 0x00ff);
+    data[7] = (unsigned char)( (jposition[3] >> 8) & 0x00ff);
+
+    // logical_id << 2 = wire_id: (0x60 + findex) << 2 = 0x180 + findex*4
+    const int logical_id = 0x60 + findex;
+    return canSendMsg(ch, logical_id, 8, data, TRUE, 0);
+}
+
 int command_set_period(void* ch, short* period)
 {
     long Txid;
@@ -359,6 +391,7 @@ int command_set_period(void* ch, short* period)
     ret = canSendMsg(ch, Txid, 6, data, TRUE, 0);
     return ret;
 }
+
 int command_set_device_id(void* ch, unsigned char did)
 {
     long Txid;
@@ -371,6 +404,7 @@ int command_set_device_id(void* ch, unsigned char did)
     ret = canSendMsg(ch, Txid, 6, data, TRUE, 0);
     return ret;
 }
+
 int command_set_rs485_baudrate(void* ch, unsigned int baudrate)
 {
     long Txid;
@@ -386,18 +420,21 @@ int command_set_rs485_baudrate(void* ch, unsigned int baudrate)
     ret = canSendMsg(ch, Txid, 6, data, TRUE, 0);
     return ret;
 }
+
 int request_hand_information(void* ch)
 {
     long Txid = ID_RTR_HAND_INFO;
     int ret = canSentRTR(ch, Txid, TRUE, 0);
     return ret;
 }
+
 int request_hand_serial(void* ch)
 {
     long Txid = ID_RTR_SERIAL;
     int ret = canSentRTR(ch, Txid, TRUE, 0);
     return ret;
 }
+
 int request_finger_pose(void* ch, int findex)
 {
     assert(findex >= 0 && findex < NUM_OF_FINGERS);
@@ -405,19 +442,7 @@ int request_finger_pose(void* ch, int findex)
     int ret = canSentRTR(ch, Txid, TRUE, 0);
     return ret;
 }
-int request_imu_data(void* ch)
-{
-    long Txid = ID_RTR_IMU_DATA;
-    int ret = canSentRTR(ch, Txid, TRUE, 0);
-    return ret;
-}
-int request_temperature(void* ch, int sindex)
-{
-    assert(sindex >= 0 && sindex < NUM_OF_TEMP_SENSORS);
-    long Txid = ID_RTR_TEMPERATURE + sindex;
-    int ret = canSentRTR(ch, Txid, TRUE, 0);
-    return ret;
-}
+
 int can_write_message(void* ch, int id, int len, unsigned char* data, int blocking, int timeout_usec)
 {
     int err;
@@ -428,6 +453,12 @@ int can_read_message(void* ch, int* id, int* len, unsigned char* data, int block
 {
     int err;
     err = canReadMsg(ch, id, len, data, blocking, timeout_usec);
+    return err;
+}
+int can_write_message_raw(void* ch, int id, int len, unsigned char* data, int blocking, int timeout_usec)
+{
+    int err;
+    err = canSendMsgRaw(ch, id, len, data, blocking, timeout_usec);
     return err;
 }
 CANAPI_END

@@ -140,6 +140,14 @@ int command_servo_on(void* ch);
 int command_servo_off(void* ch);
 
 /**
+ * @brief command_calibration — send position calibration start command
+ *        Caution: sets all encoder values to 0 (joint 13 → 90 deg)
+ * @param ch CAN handle
+ * @return 0 on success, -1 on error
+ */
+int command_calibration(void* ch);
+
+/**
  * @brief command_set_torque
  * @param ch
  * @param findex
@@ -147,9 +155,6 @@ int command_servo_off(void* ch);
  * @return
  */
 int command_set_torque(void* ch, int findex, short* pwm);
-
-int command_pick(void* ch);
-int command_place(void* ch);
 
 /**
  * @brief command_set_pose
@@ -159,6 +164,18 @@ int command_place(void* ch);
  * @return
  */
 int command_set_pose(void* ch, int findex, short* jposition);
+
+/**
+ * @brief command_set_pose_direct — H-inf onboard position target
+ *        Sends raw 11-bit CAN IDs 0x180/0x184/0x188/0x18C
+ *        (index/middle/little/thumb) matching the firmware protocol
+ *        without the legacy (id << 2) encoding.
+ * @param ch
+ * @param findex 0..3 → index/middle/little/thumb
+ * @param jposition encoder counts (int16 LE, 4 joints)
+ * @return 0 on success, -1 on error
+ */
+int command_set_pose_direct(void* ch, int findex, short* jposition);
 
 /**
  * @brief command_set_period
@@ -208,21 +225,6 @@ int request_hand_serial(void* ch);
 int request_finger_pose(void* ch, int findex);
 
 /**
- * @brief request_imu_data
- * @param ch
- * @return
- */
-int request_imu_data(void* ch);
-
-/**
- * @brief request_temperature
- * @param ch
- * @param sindex sensor index [0,3]
- * @return
- */
-int request_temperature(void* ch, int sindex);
-
-/**
  * @brief can_write_message
  * @param ch
  * @param id
@@ -245,6 +247,18 @@ int can_write_message(void* ch, int id, int len, unsigned char* data, int blocki
  * @return
  */
 int can_read_message(void* ch, int* id, int* len, unsigned char* data, int blocking, int timeout_usec);
+
+/**
+ * @brief can_write_message_raw — write CAN message without ID shifting
+ * @param ch
+ * @param id raw CAN ID (as seen on wire)
+ * @param len
+ * @param data
+ * @param blocking
+ * @param timeout_usec
+ * @return 0 on success, -1 on error
+ */
+int can_write_message_raw(void* ch, int id, int len, unsigned char* data, int blocking, int timeout_usec);
 
 CANAPI_END
 

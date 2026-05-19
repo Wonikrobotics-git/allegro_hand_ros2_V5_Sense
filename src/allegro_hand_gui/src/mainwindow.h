@@ -8,8 +8,12 @@
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <yaml-cpp/yaml.h>
 #include <fstream>
+#include <sensor_msgs/msg/joint_state.hpp>
 #include <QListWidget>
 #include <QTimer>
+
+class GainTuningDialog;
+class DeviceConfigDialog;
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -21,7 +25,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr);
+    explicit MainWindow(QWidget *parent = nullptr, double uiScale = 1.0);
     ~MainWindow();
 
     void setNode(std::shared_ptr<rclcpp::Node> node);
@@ -35,13 +39,9 @@ private slots:
 
     void TimeChanged(double arg1);
 
-    void on_label_4_linkActivated(const QString &link);
-
     void ForceValue(double arg1);
     
     void ForceApply();
-
-    void PdNumChanged(int arg1);
 
     void HomeButton();
 
@@ -50,14 +50,6 @@ private slots:
     void GravityButton();
 
     void TorqueoffButton();
-
-    void SaveNumChanged(int arg1);
-
-    void SaveButton();
-
-    void MoveButton();
-
-    void ResetButton();
 
     void ClearlogButton();
 
@@ -87,6 +79,10 @@ private slots:
 
     void executeSequence();
 
+    void GainTuningPanelButton();
+
+    void DeviceConfigPanelButton();
+
 private:
     Ui::MainWindow *ui;
 
@@ -94,18 +90,21 @@ private:
     QTimer *sequenceTimer;
     QStringList selectedPoses;
     int repeatCount;
-    int executedCycles;  // 추가된 변수
     int poseCount;
 
     std::shared_ptr<rclcpp::Node> node_;
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr time_pub_;
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr force_pub_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr joint_cmd_pub;
-    bool sliderPressed_;
+    bool sliderPressed_ = false;
 
     void listYamlFiles();
 
-    static QString lastSelectedPose; // 마지막 선택된 포즈를 저장하는 변수
+    static QString lastSelectedPose;
     bool selectionCompleteLogged;
+
+    GainTuningDialog*    gainTuningDialog_;
+    DeviceConfigDialog*  deviceConfigDialog_;
+    double               uiScale_;
 };
 #endif // MAINWINDOW_H

@@ -1,4 +1,8 @@
 #include "mainwindow.h"
+#include <chrono>
+#include <thread>
+#include "gain_tuning_dialog.h"
+#include "device_config_dialog.h"
 #include "./ui_mainwindow.h"
 #include <QApplication>
 #include <QMessageBox>
@@ -6,11 +10,11 @@
 #include <QDir>
 #include <QFileInfoList>
 #include <QListWidgetItem>
-#include <QDebug>
 
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(QWidget *parent, double uiScale)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
+    , uiScale_(uiScale)
 {
     ui->setupUi(this);
 
@@ -41,16 +45,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->pushButton_5, &QPushButton::clicked, this, &MainWindow::GravityButton);
     connect(ui->pushButton_6, &QPushButton::clicked, this, &MainWindow::TorqueoffButton);
 
-    /// Custom Hand Pose Panel
-    connect(ui->spinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, &MainWindow::PdNumChanged);
-    connect(ui->pushButton_7, &QPushButton::clicked, this, &MainWindow::MoveButton);
-
-    /// FingerTip Sensor Panel
-    connect(ui->pushButton_9, &QPushButton::clicked, this, &MainWindow::ResetButton);
-
     /// Save pose Panel
-    connect(ui->spinBox_2, QOverload<int>::of(&QSpinBox::valueChanged), this, &MainWindow::SaveNumChanged);
-    connect(ui->pushButton_8, &QPushButton::clicked, this, &MainWindow::SaveButton);
     connect(ui->pushButton_12, &QPushButton::clicked, this, &MainWindow::SavefileButton);  
 
 
@@ -70,6 +65,14 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->startSequenceButton, &QPushButton::clicked, this, &MainWindow::on_startSequenceButton_clicked);
     connect(ui->refreshButton, &QPushButton::clicked, this, &MainWindow::on_refreshButton_clicked);   
 
+    /// Gain Tuning Panel (menu action)
+    connect(ui->actionGainTuning, &QAction::triggered, this, &MainWindow::GainTuningPanelButton);
+    gainTuningDialog_ = nullptr;
+
+    /// Device Config Panel (menu action)
+    connect(ui->actionDeviceConfig, &QAction::triggered, this, &MainWindow::DeviceConfigPanelButton);
+    deviceConfigDialog_ = nullptr;
+
     ui->poseListWidget->hide();
     ui->selectPoseButton->hide();
     ui->repeatCountSpinBox->hide();
@@ -78,7 +81,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     currentSequenceIndex = 0;
     repeatCount = 0;
-    executedCycles = 0;
     poseCount = 0;
     selectionCompleteLogged = false;
 
@@ -92,28 +94,51 @@ MainWindow::~MainWindow()
 
 std::vector<double> MainWindow::readFinalJointStates()
 {
+    std::vector<double> positions;
+    bool received = false;
 
-    std::string pkg_path = ament_index_cpp::get_package_share_directory("allegro_hand_controllers");
-    std::string file_path = pkg_path + "/pose/pose_moveit.yaml";
+    auto sub = node_->create_subscription<sensor_msgs::msg::JointState>(
+        "allegroHand/joint_states", 1,
+        [&positions, &received](const sensor_msgs::msg::JointState::SharedPtr msg) {
+            if (!received && msg->position.size() >= 16) {
+                positions.assign(msg->position.begin(), msg->position.begin() + 16);
+                received = true;
+            }
+        });
 
-    YAML::Node node = YAML::LoadFile(file_path);
-    std::vector<double> positions = node["position"].as<std::vector<double>>();
-  return positions;
+    // Wait up to 2 seconds for a message
+    auto start = std::chrono::steady_clock::now();
+    while (!received) {
+        rclcpp::spin_some(node_);
+        auto elapsed = std::chrono::steady_clock::now() - start;
+        if (std::chrono::duration_cast<std::chrono::seconds>(elapsed).count() >= 2) {
+            ui->logTextEdit->append("Failed to receive joint_states within timeout");
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    sub.reset();
+    return positions;
 }
 
 void MainWindow::setNode(std::shared_ptr<rclcpp::Node> node)
 {
     node_ = node;
 
-    // Publisher 초기화
     time_pub_ = node_->create_publisher<std_msgs::msg::Float32>("timechange", 1);
     force_pub_ = node_->create_publisher<std_msgs::msg::Float32>("forcechange", 1);
-    joint_cmd_pub = node_->create_publisher<std_msgs::msg::String>("/allegroHand/lib_cmd", 10);
+    joint_cmd_pub = node_->create_publisher<std_msgs::msg::String>("allegroHand/lib_cmd", 10);
 }
 
 void MainWindow::savePose(const std::string& pose_file)
 {
   std::vector<double> positions = readFinalJointStates();
+
+  if (positions.size() < 16) {
+    ui->logTextEdit->append("Failed to save pose: could not read 16 joint positions (timeout?)");
+    return;
+  }
 
   YAML::Emitter out;
   out << YAML::BeginMap;
@@ -180,12 +205,6 @@ void MainWindow::ChangeButton()
 
 void MainWindow::TimeChanged(double arg1)
 {
-
-}
-
-void MainWindow::on_label_4_linkActivated(const QString &link)
-{
-
 }
 
 void MainWindow::ForceValue(double arg1)
@@ -211,12 +230,10 @@ void MainWindow::HomeButton()
 {
 
     std_msgs::msg::String msg;
-    msg.data = "home";  
+    msg.data = "home";
 
-    // 메시지 퍼블리시
     joint_cmd_pub->publish(msg);
 
-    // 로그 메시지 추가
     QString logMessage = QString("Home Position");
     ui->logTextEdit->append(logMessage);
 }
@@ -225,9 +242,8 @@ void MainWindow::GraspButton()
 {
 
     std_msgs::msg::String msg;
-    msg.data = "grasp_4";  
+    msg.data = "grasp_4";
 
-    // 메시지 퍼블리시
     joint_cmd_pub->publish(msg);
 
     QString logMessage = QString("Grasp");
@@ -240,9 +256,8 @@ void MainWindow::GravityButton()
 {
 
     std_msgs::msg::String msg;
-    msg.data = "gravcomp";  
+    msg.data = "gravcomp";
 
-    // 메시지 퍼블리시
     joint_cmd_pub->publish(msg);
 
     QString logMessage = QString("Gravity Compensation");
@@ -255,9 +270,8 @@ void MainWindow::TorqueoffButton()
 {
 
     std_msgs::msg::String msg;
-    msg.data = "off";  
+    msg.data = "off";
 
-    // 메시지 퍼블리시
     joint_cmd_pub->publish(msg);
 
     QString logMessage = QString("Torque off");
@@ -266,61 +280,6 @@ void MainWindow::TorqueoffButton()
 
 }
 
-void MainWindow::SaveNumChanged(int arg1)
-{
-    
-}
-
-void MainWindow::SaveButton()
-{
-    int save_num_ = ui->spinBox_2->value();
-    std::string pose_file = "pose" + std::to_string(save_num_) + ".yaml";
-    savePose(pose_file);
-
-    QString logMessage = QString("Pose saved to %1").arg(QString::fromStdString(pose_file));
-
-    ui->logTextEdit->append(logMessage);
-
-    listYamlFiles();
-
-}
-
-void MainWindow::PdNumChanged(int arg1)
-{
-    
-}
-
-void MainWindow::MoveButton()
-{
-    // UI에서 값 가져오기
-    int value = ui->spinBox->value();
-    QString logMessage = QString("Select Pose Num %1").arg(value);
-
-    // 로그 추가
-    ui->logTextEdit->append(logMessage);
-
-    // 메시지 생성
-    std_msgs::msg::String msg;
-    msg.data = "pdControl" + std::to_string(value); // std::stringstream 대신 간결하게 처리
-
-    // 메시지 퍼블리시
-    joint_cmd_pub->publish(msg);
-}
-
-void MainWindow::ResetButton()
-{
-
-    std_msgs::msg::String msg;
-    msg.data = "sensor";  
-
-    // 메시지 퍼블리시
-    joint_cmd_pub->publish(msg);
-
-    QString logMessage = QString("Fingertip Sensor Reset");
-
-    ui->logTextEdit->append(logMessage);
-
-}
 
 void MainWindow::ClearlogButton()
 {
@@ -329,7 +288,7 @@ void MainWindow::ClearlogButton()
 
 void MainWindow::SavefileButton()
 {
-    QString fileName = ui->savefilename->text(); // QLineEdit에서 파일명 가져오기
+    QString fileName = ui->savefilename->text();
 
     if (fileName.isEmpty()) {
         QMessageBox::information(this, tr("Input Error"), tr("Please enter a file name."));
@@ -347,17 +306,13 @@ void MainWindow::LoadfileButton()
     QListWidgetItem *selectedItem = ui->listWidget->currentItem();
 
     if (selectedItem) {
-        // 선택된 항목의 이름을 가져와서 로그에 출력
         QString fileName = selectedItem->text();
 
-        // 메시지 생성
         std_msgs::msg::String msg;
-        msg.data = fileName.toStdString(); // 간결하게 처리
+        msg.data = fileName.toStdString();
 
-        // 메시지 퍼블리시
         joint_cmd_pub->publish(msg);
 
-        // 로그 출력
         QString logMessage = QString("Selected item: %1").arg(fileName);
         ui->logTextEdit->append(logMessage);
     } else {
@@ -375,7 +330,7 @@ void MainWindow::RefreshListButton()
 void MainWindow::on_listWidget_itemClicked(QListWidgetItem *item)
 {
     QString fileName = item->text();
-    // 여기서 파일 로드 등의 동작을 추가할 수 있습니다.
+
 }
 
 
@@ -383,17 +338,17 @@ void MainWindow::listYamlFiles()
 {
     ui->listWidget->clear();
 
-    // ROS2 패키지 경로 가져오기
+
     std::string pkg_path = ament_index_cpp::get_package_share_directory("allegro_hand_controllers");
     QString directoryPath = QString::fromStdString(pkg_path + "/pose/");
     QDir directory(directoryPath);
 
-    // .yaml 파일만 나열
+
     QStringList yamlFiles = directory.entryList(QStringList() << "*.yaml", QDir::Files);
     foreach (QString filename, yamlFiles) {
-        // .yaml 확장자를 제거
+
         QString displayName = filename;
-        displayName.chop(5); // .yaml의 길이인 5를 제거
+        displayName.chop(5); 
 
         QListWidgetItem *item = new QListWidgetItem(displayName);
         ui->listWidget->addItem(item);
@@ -409,17 +364,15 @@ void MainWindow::on_poseCountButton_clicked()
 
     ui->poseListWidget->clear();
 
-    // ROS2 패키지 경로 가져오기
     std::string pkg_path = ament_index_cpp::get_package_share_directory("allegro_hand_controllers");
     QString directoryPath = QString::fromStdString(pkg_path + "/pose/");
     QDir directory(directoryPath);
 
-    // .yaml 파일만 나열
     QStringList yamlFiles = directory.entryList(QStringList() << "*.yaml", QDir::Files);
     foreach (QString filename, yamlFiles) {
-        // .yaml 확장자를 제거
+
         QString displayName = filename;
-        displayName.chop(5); // .yaml의 길이인 5를 제거
+        displayName.chop(5);
 
         QListWidgetItem *item = new QListWidgetItem(displayName);
         ui->poseListWidget->addItem(item);
@@ -472,28 +425,28 @@ void MainWindow::on_startSequenceButton_clicked()
 {
     double time = ui->doubleSpinBox->value();
     int handtime = (int)(time * 1000) + 200;
-    repeatCount = ui->repeatCountSpinBox->value() - 1; // 반복 횟수 가져오기
+    repeatCount = ui->repeatCountSpinBox->value() - 1;
     currentSequenceIndex = 0;
     ui->logTextEdit->append("Starting sequence...");
-    sequenceTimer->start(handtime); // 1초 간격으로 타이머 시작
+    sequenceTimer->start(handtime);
 }
 
 void MainWindow::on_refreshButton_clicked()
 {
-    ui->poseCountSpinBox->setValue(1); // 포즈 개수를 기본값으로 리셋
-    ui->poseListWidget->hide(); // 포즈 리스트 숨기기
-    ui->poseListWidget->clear(); // 포즈 리스트 클리어
-    ui->selectPoseButton->hide(); // 선택 버튼 숨기기
-    ui->repeatCountSpinBox->hide(); // 반복 횟수 스핀박스 숨기기
-    ui->repeatCountSpinBox->setValue(1); // 반복 횟수 스핀박스를 기본값으로 리셋
-    ui->startSequenceButton->hide(); // 시작 버튼 숨기기
-    ui->refreshButton->show(); // 새로고침 버튼 숨기기
-    selectedPoses.clear(); // 선택된 포즈 리스트 초기화
-    ui->logTextEdit->clear(); // 로그 클리어
+    ui->poseCountSpinBox->setValue(1);
+    ui->poseListWidget->hide();
+    ui->poseListWidget->clear();
+    ui->selectPoseButton->hide();
+    ui->repeatCountSpinBox->hide();
+    ui->repeatCountSpinBox->setValue(1);
+    ui->startSequenceButton->hide();
+    ui->refreshButton->show();
+    selectedPoses.clear();
+    ui->logTextEdit->clear();
     ui->label_15->hide();
-    currentSequenceIndex = 0; // 현재 시퀀스 인덱스 초기화
-    repeatCount = 0; // 반복 횟수 초기화
-    sequenceTimer->stop(); // 타이머 멈추기
+    currentSequenceIndex = 0;
+    repeatCount = 0;
+    sequenceTimer->stop();
     ui->logTextEdit->append("Reset complete. Please select poses again.");
     ui->selectPoseButton->setEnabled(true);
     selectionCompleteLogged = false;
@@ -504,32 +457,55 @@ void MainWindow::executeSequence()
     if (currentSequenceIndex < selectedPoses.size()) {
         QString pose = selectedPoses[currentSequenceIndex];
         std_msgs::msg::String msg;
-        msg.data = pose.toStdString(); // 간결하게 처리
+        msg.data = pose.toStdString();
 
-        // 메시지 퍼블리시
         joint_cmd_pub->publish(msg);
 
         ui->logTextEdit->append("Executing pose: " + pose);
         ++currentSequenceIndex;
     } else {
         if (repeatCount > 0) {
-            currentSequenceIndex = 0; // 처음 포즈로 돌아감
-            --repeatCount; // 반복 횟수 감소
+            currentSequenceIndex = 0;
+            --repeatCount;
         } else {
-            sequenceTimer->stop(); // 반복 횟수 완료 시 타이머 정지
+            sequenceTimer->stop();
             ui->logTextEdit->append("Sequence completed.");
         }
     }
 }
 
 
+void MainWindow::GainTuningPanelButton()
+{
+    if (!gainTuningDialog_) {
+        gainTuningDialog_ = new GainTuningDialog(node_, this);
+        // Make it a true independent window so it doesn't stay on top of MainWindow.
+        gainTuningDialog_->setWindowFlags(Qt::Window);
+    }
+    gainTuningDialog_->show();
+    gainTuningDialog_->raise();
+    gainTuningDialog_->activateWindow();
+
+    ui->logTextEdit->append("Gain Tuning Panel opened");
+}
+
+void MainWindow::DeviceConfigPanelButton()
+{
+    if (!deviceConfigDialog_) {
+        deviceConfigDialog_ = new DeviceConfigDialog(node_, this);
+        deviceConfigDialog_->setWindowFlags(Qt::Window);
+    }
+    deviceConfigDialog_->show();
+    deviceConfigDialog_->raise();
+    deviceConfigDialog_->activateWindow();
+
+    ui->logTextEdit->append("Device Configuration Panel opened");
+}
+
 void MainWindow::ExitButton()
 {
     TorqueoffButton();
-    // ROS 노드를 종료합니다.
     rclcpp::shutdown();
-    
-    // Qt 애플리케이션을 종료합니다.
     QApplication::quit();
 
 }

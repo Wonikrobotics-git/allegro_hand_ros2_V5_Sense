@@ -49,67 +49,60 @@
 #include <string>
 #include <vector>
 #include "AllegroHandDef.h"
-
-
-inline int OperatingMode = 0;
-inline double f[4];
-inline double x[4];
-inline double y[4];
-inline double z[4];
-inline float fingertip_sensor[4];
-inline float fingertip_sensor_pre[4];
-
-inline float madi_sensor[11];
-inline float madi_sensor_pre[11];
-inline float palm_sensor;
-inline float palm_sensor_pre;
-
-inline void* _can_handle;                      ///< CAN device(driver) handle
+#include "AllegroHandDrvBase.h"
 
 
 namespace allegro
 {
 
-class AllegroHandDrv
+class AllegroHandDrv : public AllegroHandDrvBase
 {
 public:
     AllegroHandDrv();
-    ~AllegroHandDrv();
+    ~AllegroHandDrv() override;
 
-    bool init(std::string CAN_CH, int mode = 0);                ///< initialize Allegro Hand driver and CAN channel
+    bool init(std::string CAN_CH, int mode = 0) override;
 
-    void setTorque(double *torque);         ///< set desired joint torque
-    void getJointInfo(double *position);    ///< get current joint position
+    void setTorque(double *torque) override;
+    void getJointInfo(double *position) override;
 
-    bool emergencyStop() { return _emergency_stop; }        ///< whether emergency is activated
-    double torqueConversion() { return _tau_cov_const; }    ///< get torque conversion constant
-    double inputVoltage() { return _input_voltage; }        ///< get input voltage of this system
+    bool emergencyStop() override { return _emergency_stop; }
+    double torqueConversion() override { return _tau_cov_const; }
+    double inputVoltage() override { return _input_voltage; }
+    void calibrate() override;
 
-    int readCANFrames();                    ///< try to read CAN frames (user code should call this fast enough)
-    int writeJointTorque();                 ///< send joint command via CAN comm
-    bool isJointInfoReady();                ///< return whether all joint positions are updated
-    void resetJointInfoReady();             ///< reset joint position update flag
+    int readFrames() override;              ///< try to read CAN frames
+    int readCANFrames() { return readFrames(); }  ///< backward-compat alias
+    int writeJointTorque() override;
+    bool isJointInfoReady() override;
+    void resetJointInfoReady() override;
 
-    bool RIGHT_HAND;                        ///< handedness (right/left)
+    /// Send joint position targets directly via command_set_pose (H-inf onboard mode).
+    void sendPositionDirect(const double* q_rad) override;
 
-    void sendPickCommand();                 ///< send pick status CAN command
-    void sendPlaceCommand();                ///< send place status CAN command
+    /// Enable/Disable H-inf onboard control mode on the firmware (ID 0x228).
+    void setHinfMode(bool enable) override;
+
+    /// Send RPY for firmware gravity feed-forward (ID 0x22C).
+    void sendGravityFeedForwardRPY(double roll_deg,
+                                   double pitch_deg,
+                                   double yaw_deg) override;
 
 private:
     void* _can_handle;                      ///< CAN device(driver) handle
 
     double _curr_position[DOF_JOINTS];      ///< current joint position (radian)
     double _curr_torque[DOF_JOINTS];        ///< current joint torque (Nm)
+    double _curr_motor_current[DOF_JOINTS];
     double _desired_position[DOF_JOINTS];   ///< desired joint position (radian)
     double _desired_torque[DOF_JOINTS];     ///< desired joint torque (Nm)
-
-    unsigned char _curr_temperature[DOF_JOINTS];
 
     double _hand_version;                   ///< hand version
     double _tau_cov_const;                  ///< constant to convert joint torque to pwm command
     double _input_voltage;                  ///< input voltage
 
     int _curr_position_get;                 ///< bit flag telling which joint positions are updated (0x01:index 0x02:middle 0x04:pinky 0x08:thumb)
+    int _curr_current_get;
 
     double _pwm_max_global;                 ///< global max value of PWM command is limited by the input voltage
     double _pwm_max[DOF_JOINTS];            ///< max value of PWM command of each joint
@@ -118,7 +111,12 @@ private:
     int    _motor_direction[DOF_JOINTS];    ///< motor direction
 
     volatile bool _emergency_stop;          ///< something goes wrong?
-    
+
+    // Sensor parsing
+    float _sensor_buf[DOF_JOINTS] = {0};    ///< intermediate sensor buffer (16 channels, EMA filtered)
+    static const int FingertipSensorMap[4];
+    static const int MadiSensorMap[11];
+    static const int CurrentMap[16];
 
 private:
     void _readDevices();                    ///< read CAN messages

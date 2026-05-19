@@ -21,7 +21,8 @@ def generate_launch_description():
             output='screen',
             arguments=['-d', rviz_config_file],
             remappings=[
-                ('tf', PythonExpression(["'allegroHand_", LaunchConfiguration('NUM'), "/tf'"]))
+                ('tf', PythonExpression(["'allegroHand_", LaunchConfiguration('NUM'), "/tf'"])),
+                ('/fingertip_arrow_markers', PythonExpression(["'allegroHand_", LaunchConfiguration('NUM'), "/fingertip_arrow_markers'"])),
             ]
         )
     ])

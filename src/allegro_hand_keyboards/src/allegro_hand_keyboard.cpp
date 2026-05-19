@@ -28,8 +28,6 @@ public:
 private:
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr cmd_pub_;
 
-  void savePose(const std::string& pose_file);
-  std::vector<double> readFinalJointStates();
 };
 
 AHKeyboard::AHKeyboard() : Node("allegro_hand_keyboard")
@@ -46,36 +44,6 @@ void quit(int sig)
   tcsetattr(kfd, TCSANOW, &cooked);
   rclcpp::shutdown();
   exit(0);
-}
-
-std::vector<double> AHKeyboard::readFinalJointStates()
-{
-  
-  std::string pkg_path = ament_index_cpp::get_package_prefix("allegro_hand_controllers");
-  std::string file_path = pkg_path + "/share/allegro_hand_controllers/pose/pose_moveit.yaml";
-
-  
-  YAML::Node node = YAML::LoadFile(file_path);
-  std::vector<double> positions = node["position"].as<std::vector<double>>();
-  return positions;
-}
-
-void AHKeyboard::savePose(const std::string& pose_file)
-{
-  std::vector<double> positions = readFinalJointStates();
-
-  YAML::Emitter out;
-  out << YAML::BeginMap;
-  out << YAML::Key << "position" << YAML::Value << positions;
-  out << YAML::EndMap;
-
-  std::string pkg_path = ament_index_cpp::get_package_prefix("allegro_hand_controllers");
-  std::string file_path = pkg_path + "/share/allegro_hand_controllers/pose/" + pose_file;
-
-  std::ofstream fout(file_path);
-  fout << out.c_str();
-  fout.close();
-  RCLCPP_INFO(this->get_logger(), "Pose saved to %s", pose_file.c_str());
 }
 
 int main(int argc, char** argv)
@@ -105,36 +73,18 @@ void AHKeyboard::printUsage() {
   std::cout << "\tGrasp (4 fingers):\t\t'K'" << std::endl;
   std::cout << "\tGrasp (envelop):\t\t'E'" << std::endl;
   std::cout << "\tGravity compensation:\t\t'A'" << std::endl;
+  std::cout << "\tMotor calibration\t\t'C'" << std::endl;
   std::cout << "\tMotors Off (free motion):\t'F'" << std::endl;
-
-  std::cout << " -----------------------------------------------------------------------------" << std::endl;
-  std::cout << "  MOVE IT\t(Need to install moveit package)" << std::endl;
-  std::cout << " -----------------------------------------------------------------------------" << std::endl;
-  std::cout << "\tPD Control (Custom Pose) :\t'0 ~ 9'" << std::endl;
-  std::cout << "\tSave Latest Moveit Pose:\t'Space + 0 ~ 9'" << std::endl;
 
   std::cout << "  Subscriber code for reading these messages is included in '~core_template'." << std::endl;
   std::cout << " -----------------------------------------------------------------------------\n" << std::endl;
 
 }
 
-#define HANDLE_KEYCODE(keycode, pose_num) \
-  case keycode: \
-    if (!space_pressed) { \
-      ss << "pdControl" << pose_num; \
-      dirty = true; \
-    } else { \
-      RCLCPP_DEBUG(this->get_logger(), #keycode "_key: Save Pose " #pose_num); \
-      savePose("pose" #pose_num ".yaml"); \
-    } \
-    break;
-
-
 void AHKeyboard::keyLoop()
 {
   char c;
   bool dirty=false;
-  bool space_pressed = false;
 
   // get the console in raw mode
   tcgetattr(kfd, &cooked);
@@ -164,20 +114,6 @@ void AHKeyboard::keyLoop()
     switch(c)
     {
 
-      HANDLE_KEYCODE(KEYCODE_0, 0)
-      HANDLE_KEYCODE(KEYCODE_1, 1)
-      HANDLE_KEYCODE(KEYCODE_2, 2)
-      HANDLE_KEYCODE(KEYCODE_3, 3)
-      HANDLE_KEYCODE(KEYCODE_4, 4)
-      HANDLE_KEYCODE(KEYCODE_5, 5)
-      HANDLE_KEYCODE(KEYCODE_6, 6)
-      HANDLE_KEYCODE(KEYCODE_7, 7)
-      HANDLE_KEYCODE(KEYCODE_8, 8)
-      HANDLE_KEYCODE(KEYCODE_9, 9)
-
-      case VK_SPACE:
-        space_pressed = true;
-        break;
       case KEYCODE_h:
         RCLCPP_DEBUG(this->get_logger(), "h_key: Home");
         ss << "home";
@@ -219,6 +155,12 @@ void AHKeyboard::keyLoop()
         ss << "gravcomp";
         dirty = true;
         break;
+
+      case KEYCODE_c:
+        RCLCPP_DEBUG(this->get_logger(), "c_key: calibration");
+        ss << "calibration";
+        dirty = true;
+        break;
         
       case KEYCODE_f:
         RCLCPP_DEBUG(this->get_logger(), "f_key: off");
@@ -230,12 +172,6 @@ void AHKeyboard::keyLoop()
       case KEYCORD_question:
         printUsage();
         break;
-    }
-
-    if(c >= KEYCODE_0 && c <= KEYCODE_9) {
-      space_pressed = false;
-    } else if (c == VK_SPACE) {
-      space_pressed = true;
     }
 
     if(dirty ==true)

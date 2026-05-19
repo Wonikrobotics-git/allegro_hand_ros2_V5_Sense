@@ -1,18 +1,17 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>bhand</name>
-  <version>0.0.0</version>
-  <description>Computing grasp configurations.</description>
-
-  <!-- One maintainer tag required, multiple allowed, one person per tag -->
+  <name>allegro_hand_sensor_visualizer</name>
+  <version>0.0.1</version>
+  <description>Sensor visualization GUI for Allegro Hand</description>
   <maintainer email="sh-yang@wonik.com">Hibo</maintainer>
   <license>BSD</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <!-- Add dependencies -->
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>ament_index_cpp</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

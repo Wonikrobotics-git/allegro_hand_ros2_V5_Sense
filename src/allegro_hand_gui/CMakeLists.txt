@@ -9,6 +9,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
@@ -23,11 +25,13 @@ include_directories(
 set(SOURCES
   src/main.cpp
   src/mainwindow.cpp
+  src/gain_tuning_dialog.cpp
+  src/device_config_dialog.cpp
 )
 
 # UI files
 set(UIS
-  ui/mainwindow.ui
+  src/mainwindow.ui
 )
 
 # Qt5 setup
@@ -45,7 +49,7 @@ add_executable(${PROJECT_NAME}_node ${SOURCES} ${UIS})
 target_link_libraries(${PROJECT_NAME}_node
   Qt5::Widgets yaml-cpp
 )
-ament_target_dependencies(${PROJECT_NAME}_node rclcpp std_msgs yaml-cpp)
+ament_target_dependencies(${PROJECT_NAME}_node rclcpp std_msgs sensor_msgs ament_index_cpp yaml-cpp)
 # Install targets
 install(TARGETS ${PROJECT_NAME}_node
   DESTINATION lib/${PROJECT_NAME}

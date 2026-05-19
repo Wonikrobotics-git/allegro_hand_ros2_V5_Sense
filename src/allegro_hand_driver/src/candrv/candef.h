@@ -87,6 +87,10 @@ CANAPI_BEGIN
 
 #define ID_CMD_CONFIG                   0x68
 
+#define ID_CMD_Position_Calibration_S   0x89  /* Start position calibration (sets all encoders to 0) */
+#define ID_CMD_HINF_MODE                0x228 /* data[0]: 0=OFF, 1=ON (onboard position control) */
+#define ID_CMD_GFF_RPY                  0x22C /* int16 roll/pitch/yaw in centi-degrees, LE */
+
 ////////////////////////////////////////////////
 //  Define CAN Data Reqeust (RTR)
 #define ID_RTR_HAND_INFO                0x80
@@ -115,4 +119,3 @@ CANAPI_BEGIN
 CANAPI_END
 
 #endif // __ALLEGROHAND_CANDEF_H__
-

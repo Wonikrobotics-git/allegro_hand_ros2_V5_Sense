@@ -18,6 +18,8 @@ find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(allegro_hand_driver REQUIRED)
 find_package(bhand REQUIRED)
 find_package(yaml-cpp REQUIRED)
@@ -30,27 +32,39 @@ include_directories(
 )
 
 # ─────────────────────────────────────
-# Legacy targets (original executable)
+# Build (CAN + UDP Ethernet via AllegroHandDrvBase)
 # ─────────────────────────────────────
-add_library(allegro_node STATIC src/allegro_node.cpp)
+# Use an OBJECT lib (not STATIC) so Jazzy/GNU ld --as-needed does not drop ROS
+# shared libs (e.g. libsensor_msgs__rosidl_generator_c.so) that are only
+# referenced from allegro_node.o — see linker DT_NEEDED ordering with .a archives.
+add_library(allegro_node OBJECT src/allegro_node.cpp)
 ament_target_dependencies(
-  allegro_node rclcpp sensor_msgs allegro_hand_driver
+  allegro_node rclcpp sensor_msgs std_msgs visualization_msgs geometry_msgs allegro_hand_driver ament_index_cpp
 )
+# Ethernet (UDP) driver is a separate static lib; link it on the final executable.
+get_filename_component(_allegro_pkg_prefix "${allegro_hand_driver_DIR}" DIRECTORY)
+get_filename_component(_allegro_pkg_prefix "${_allegro_pkg_prefix}" DIRECTORY)
+get_filename_component(_allegro_pkg_prefix "${_allegro_pkg_prefix}" DIRECTORY)
 
-add_executable(allegro_node_grasp src/allegro_node_grasp.cpp)
+add_executable(allegro_node_grasp
+  src/allegro_node_grasp.cpp
+  $<TARGET_OBJECTS:allegro_node>
+)
+# Plain target_link_libraries (no PRIVATE/PUBLIC): ament_target_dependencies uses
+# the plain signature; mixing keyword + plain on the same target breaks CMake.
 target_link_libraries(allegro_node_grasp
-  allegro_node
+  "${_allegro_pkg_prefix}/lib/liballegro_hand_tcp_driver.a"
   yaml-cpp
   ${bhand_LIBRARIES}
+  ament_index_cpp::ament_index_cpp
 )
-ament_target_dependencies(allegro_node_grasp rclcpp sensor_msgs allegro_hand_driver yaml-cpp bhand)
+ament_target_dependencies(allegro_node_grasp rclcpp sensor_msgs std_msgs visualization_msgs geometry_msgs allegro_hand_driver yaml-cpp bhand ament_index_cpp)
 
 # ─────────────────────────────────────
 # Install
 # ─────────────────────────────────────
 
 install(TARGETS
-  allegro_node
   allegro_node_grasp
   DESTINATION lib/${PROJECT_NAME}
 )
@@ -91,6 +105,10 @@ install(DIRECTORY urdf/
   DESTINATION share/${PROJECT_NAME}/urdf
   FILES_MATCHING PATTERN "*.urdf"
   PATTERN "*.rviz"
+)
+
+install(DIRECTORY data/
+  DESTINATION share/${PROJECT_NAME}/data
 )
 
 # ─────────────────────────────────────

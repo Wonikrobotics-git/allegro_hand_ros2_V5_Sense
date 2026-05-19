@@ -45,6 +45,7 @@
 #include <iostream>
 #include <math.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string>
 #include <rclcpp/rclcpp.hpp>
 #include "candrv/candrv.h"
@@ -72,6 +73,19 @@ using namespace std;
 
 namespace allegro
 {
+
+static int16_t degreesToCentiDegrees(double degrees)
+{
+    double value = degrees * 100.0;
+    if (value > 32767.0) value = 32767.0;
+    if (value < -32768.0) value = -32768.0;
+    return static_cast<int16_t>(lround(value));
+}
+
+    const int AllegroHandDrv::FingertipSensorMap[4] = { 3, 7, 11, 15 };
+    const int AllegroHandDrv::MadiSensorMap[11] = { 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14};
+    const int AllegroHandDrv::CurrentMap[16] = { 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3};
+
 
 AllegroHandDrv::AllegroHandDrv()
     : _can_handle(0)
@@ -145,13 +159,19 @@ bool AllegroHandDrv::init(std::string CAN_CH, int mode)
     return true;
 }
 
-int AllegroHandDrv::readCANFrames()
+void AllegroHandDrv::calibrate()
+{
+    RCLCPP_INFO(rclcpp::get_logger("allegro_hand_drv"),
+        "CAN: Sending position calibration command");
+    CANAPI::command_calibration(_can_handle);
+}
+
+int AllegroHandDrv::readFrames()
 {
     if (_emergency_stop)
         return -1;
 
     _readDevices();
-    //usleep(10);
 
     return 0;
 }
@@ -170,7 +190,7 @@ int AllegroHandDrv::writeJointTorque()
 
 bool AllegroHandDrv::isJointInfoReady()
 {
-    return (_curr_position_get == (0x01 | 0x02 | 0x04 | 0x08));
+    return (_curr_position_get == (0x01 | 0x02 | 0x04 | 0x08));// | 0x10 | 0x20));
 }
 
 void AllegroHandDrv::resetJointInfoReady()
@@ -200,6 +220,71 @@ void AllegroHandDrv::getJointInfo(double *position)
     }
 }
 
+// Send desired joint angles directly to the hand firmware (H-inf onboard control mode).
+// q_rad[16]: desired angles in radians.
+// Converts to encoder counts using the same scale the firmware uses:
+//   count = round( q_rad / (pi/180 * 0.088) )  == round( q_deg / 0.088 )
+// Packs 4 joints per finger and sends via command_set_pose_direct
+// (raw CAN wire IDs 0x180/0x184/0x188/0x18C — index/middle/little/thumb).
+void AllegroHandDrv::sendPositionDirect(const double* q_rad)
+{
+
+    static const double RAD_TO_COUNT = 180.0 / (M_PI * 0.088); // rad -> encoder count
+    for (int findex = 0; findex < 4; findex++) {
+        short jpos[4];
+        for (int j = 0; j < 4; j++) {
+            double cnt = q_rad[findex * 4 + j] * RAD_TO_COUNT;
+            if (cnt >  32767.0) cnt =  32767.0;
+            if (cnt < -32768.0) cnt = -32768.0;
+            jpos[j] = static_cast<short>(cnt);
+        }
+        CANAPI::command_set_pose_direct(_can_handle, findex, jpos);
+    }
+}
+
+void AllegroHandDrv::setHinfMode(bool enable)
+{
+    unsigned char data[8] = {0};
+    data[0] = enable ? 1 : 0;
+    
+    // Send 3 times with a short delay to ensure robust reception during startup.
+    for (int i = 0; i < 3; i++) {
+        int ret = CANAPI::can_write_message_raw(_can_handle, ID_CMD_HINF_MODE, 8, data, TRUE, 0);
+        if (ret != 0) {
+            RCLCPP_ERROR(rclcpp::get_logger("allegro_hand_drv"),
+                         "CAN: Failed to send H-inf mode command! (ret=%d, id=0x%03X)", ret, ID_CMD_HINF_MODE);
+        }
+        usleep(2000); 
+    }
+
+    RCLCPP_INFO(rclcpp::get_logger("allegro_hand_drv"),
+                "CAN: H-inf mode %s (sent 3x to 0x%03X)", enable ? "ON" : "OFF", ID_CMD_HINF_MODE);
+}
+
+void AllegroHandDrv::sendGravityFeedForwardRPY(double roll_deg,
+                                               double pitch_deg,
+                                               double yaw_deg)
+{
+    const int16_t rpy_cdeg[3] = {
+        degreesToCentiDegrees(roll_deg),
+        degreesToCentiDegrees(pitch_deg),
+        degreesToCentiDegrees(yaw_deg)
+    };
+    unsigned char data[8] = {0};
+
+    for (int i = 0; i < 3; i++) {
+        data[2 * i] = static_cast<unsigned char>(rpy_cdeg[i] & 0x00ff);
+        data[2 * i + 1] = static_cast<unsigned char>((rpy_cdeg[i] >> 8) & 0x00ff);
+    }
+
+    int ret = CANAPI::can_write_message_raw(_can_handle, ID_CMD_GFF_RPY, 8, data, TRUE, 0);
+    if (ret != 0) {
+        RCLCPP_ERROR(rclcpp::get_logger("allegro_hand_drv"),
+                     "CAN: Failed to send GFF RPY command! (ret=%d, id=0x%03X)",
+                     ret, ID_CMD_GFF_RPY);
+    }
+}
+
 void AllegroHandDrv::_readDevices()
 {
     int err;
@@ -212,7 +297,6 @@ void AllegroHandDrv::_readDevices()
         _parseMessage(id, len, data);
         err = CANAPI::can_read_message(_can_handle, &id, &len, data, FALSE, 0);
     }
-    //ROS_ERROR("can_read_message returns %d.", err); // PCAN_ERROR_QRCVEMPTY(32) from Peak CAN means "Receive queue is empty". It is not an error.
 }
 
 void AllegroHandDrv::_writeDevices()
@@ -243,8 +327,6 @@ void AllegroHandDrv::_parseMessage(int id, int len, unsigned char* data)
 {
     int tmppos[4];
     int lIndexBase;
-    int i;
-    int tmpcur[16];
  
     switch (id) 
     {
@@ -263,8 +345,7 @@ void AllegroHandDrv::_parseMessage(int id, int len, unsigned char* data)
             RCLCPP_INFO(rclcpp::get_logger("allegro_hand_drv"),"                      hardware type: %s\n", (data[3] == 'R' ? "right" : "left"));
 
         if(data[3] == 'R') RIGHT_HAND = true;
-        else RIGHT_HAND  = false;       
-          
+        else RIGHT_HAND  = false;
         }
         break;
 
@@ -275,11 +356,39 @@ void AllegroHandDrv::_parseMessage(int id, int len, unsigned char* data)
         {
             int findex = (id & 0x00000007);
 
-            tmpcur[findex * 4 + 0] = (short) (data[0] | (data[1] << 8));
-            tmpcur[findex * 4 + 1] = (short) (data[2] | (data[3] << 8));
-            tmpcur[findex * 4 + 2] = (short) (data[4] | (data[5] << 8));
-            tmpcur[findex * 4 + 3] = (short) (data[6] | (data[7] << 8));
+            // Device sends 2 compressed frames covering all 16 joints:
+            //   findex=0 (id=0x00) → fingerA=0, fingerB=1 → joints  0-7
+            //   findex=3 (id=0x03) → fingerA=2, fingerB=3 → joints 8-15
+            // Map findex to the actual finger pair index (not findex*2)
+            static const int kCurrentFingerPairMap[4] = {0, -1, -1, 2};
+            int fingerPair = kCurrentFingerPairMap[findex];
+            if (fingerPair < 0) break;  // unexpected findex, skip
 
+            int fingerA = fingerPair;
+            int fingerB = fingerPair + 1;
+
+            // Compressed mode: 8x int8, two fingers per frame
+            // scale decode: mA ~= round(i8 * 240 / 127)
+            for (int i = 0; i < 4; i++) {
+                int8_t q = (int8_t)data[i];
+                _curr_motor_current[fingerA * 4 + i] = (short)((q * 240 + (q >= 0 ? 63 : -63)) / 127);
+            }
+            for (int i = 0; i < 4; i++) {
+                int8_t q = (int8_t)data[4 + i];
+                _curr_motor_current[fingerB * 4 + i] = (short)((q * 240 + (q >= 0 ? 63 : -63)) / 127);
+            }
+
+            _curr_current_get |= (0x01 << fingerA);
+            _curr_current_get |= (0x01 << fingerB);
+
+            if (_curr_current_get == (0x01 | 0x02 | 0x04 | 0x08))
+            {
+                // Apply sensor mapping rules
+                for (int i = 0; i < 16; i++)
+                    motor_current[CurrentMap[i]] = _curr_motor_current[i];
+
+                _curr_current_get = 0;
+            }
         }
         break;
         case ID_RTR_FINGER_POSE_1:
@@ -304,79 +413,58 @@ void AllegroHandDrv::_parseMessage(int id, int len, unsigned char* data)
             _curr_position_get |= (0x01 << (findex));
         }
         break;
+
         case ID_CMD_FINGERTIP_1:
         case ID_CMD_FINGERTIP_2:
         case ID_CMD_FINGERTIP_3:
         case ID_CMD_FINGERTIP_4:
         {
             int findex = (id & 0x00000007) - 4;
-            int16_t fingertip1 = (int16_t)(data[6] << 8 | data[7]);
+            float alpha = 0.25f;
 
-            int16_t sensor1 = (int16_t)(data[0] << 8 | data[1]);
-            int16_t sensor2 = (int16_t)(data[2] << 8 | data[3]);
-            int16_t sensor3 = (int16_t)(data[4] << 8 | data[5]);
-
-            // Raw CAN value: last digit = 0.1 place, rest = integer; store as value/10.0
-            fingertip_sensor[findex] = fingertip1 / 10.0f;
-
-            float alpha = 0.25;
-
-            if(findex == 0)
+            if (findex <= 1)
             {
-                palm_sensor = sensor1 / 10.0f;
-                madi_sensor[0] = sensor2 / 10.0f;
-                madi_sensor[1] = sensor3 / 10.0f;
+                // Compressed mode: 8x uint8, two fingers per frame
+                int fingerA = findex * 2;
+                int fingerB = fingerA + 1;
 
-                if(palm_sensor < 0)
-                    palm_sensor = 0;
-                palm_sensor = alpha * palm_sensor + (1 - alpha) * palm_sensor_pre;
-                palm_sensor_pre = palm_sensor;
-                for(int j=0; j<2; j++)
-                 {
-                    if(madi_sensor[j] < 0)
-                        madi_sensor[j] = 0;
-                    madi_sensor[j] = alpha * madi_sensor[j] + (1 - alpha) * madi_sensor_pre[j];
-                    madi_sensor_pre[j] = madi_sensor[j];
-                 }
+                for (int i = 0; i < 4; i++) {
+                    int idx = fingerA * 4 + i;
+                    int raw_val = ((int)data[i]) << 2;
+                    if (data[i] == 0xFF || raw_val < 0) raw_val = 0;
+                    _sensor_buf[idx] = alpha * raw_val + (1 - alpha) * _sensor_buf[idx];
+                }
+                for (int i = 0; i < 4; i++) {
+                    int idx = fingerB * 4 + i;
+                    int raw_val = ((int)data[4 + i]) << 2;
+                    if (data[4 + i] == 0xFF || raw_val < 0) raw_val = 0;
+                    _sensor_buf[idx] = alpha * raw_val + (1 - alpha) * _sensor_buf[idx];
+                }
             }
             else
             {
-                madi_sensor[(findex-1)*3 + 2] = sensor1 / 10.0f;
-                madi_sensor[(findex-1)*3 + 3] = sensor2 / 10.0f;
-                madi_sensor[(findex-1)*3 + 4] = sensor3 / 10.0f;
-                for(int j=0; j<3; j++)
-                 {
-                    int idx = (findex-1)*3 + 2 + j;
-                    if(madi_sensor[idx] < 0)
-                        madi_sensor[idx] = 0;
-                    madi_sensor[idx] = alpha * madi_sensor[idx] + (1 - alpha) * madi_sensor_pre[idx];
-                    madi_sensor_pre[idx] = madi_sensor[idx];
-                 }
+                // Legacy mode: 4x int16 big-endian per frame
+                for (int i = 0; i < 4; i++) {
+                    int idx = findex * 4 + i;
+                    int raw_val = (data[2 * i] << 8) | data[2 * i + 1];
+                    if (raw_val < 0) raw_val = 0;
+                    _sensor_buf[idx] = alpha * raw_val + (1 - alpha) * _sensor_buf[idx];
+                }
             }
 
-            if (fingertip_sensor[findex] < 0)
-                fingertip_sensor[findex] = 0;
+            // Map to global sensor variables
+            for (int i = 0; i < 4; i++)
+                fingertip_sensor[i] = _sensor_buf[FingertipSensorMap[i]] / 10.0f;
+            for (int i = 0; i < 11; i++)
+                madi_sensor[i] = _sensor_buf[MadiSensorMap[i]] / 10.0f;
+            palm_sensor = _sensor_buf[0];
 
-            fingertip_sensor[findex] = alpha * fingertip_sensor[findex] + (1 - alpha) * fingertip_sensor_pre[findex];
-            fingertip_sensor_pre[findex] = fingertip_sensor[findex];
         }
         break;
         default:
             RCLCPP_WARN(rclcpp::get_logger("allegro_hand_drv"), "unknown command %d, len %d", id, len);
-            for(int nd=0; nd<len; nd++)
-                printf("%d \n ", data[nd]);
             return;
     }
-}
-
-void AllegroHandDrv::sendPickCommand()
-{
-    command_pick(_can_handle);
-}
-
-void AllegroHandDrv::sendPlaceCommand()
-{
-    command_place(_can_handle);
 }
 
 } // namespace allegro

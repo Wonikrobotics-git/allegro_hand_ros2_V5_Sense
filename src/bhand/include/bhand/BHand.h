@@ -181,9 +181,9 @@ public:
 	void MoveFingerTip(double set_xyz_0[3], double set_xyz_1[3], double set_xyz_2[3], double set_xyz_3[3]);
 
 	/**
-	 * Set orientation
+	 * Set Hand orientation from Arm base
 	 */
-	void SetOrientation(double roll, double pitch, double yaw);
+
 	void SetOrientation(double R[9]);
 
 	/**
@@ -280,6 +280,8 @@ private:
 	double _f_des[NOF];					///< desired force
 
 	double _R[9];						///< body(palm) orientation
+
+	double _Rot[9];
 
 	double x_d_object;
 	double y_d_object;
