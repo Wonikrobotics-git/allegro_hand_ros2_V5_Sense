@@ -171,9 +171,9 @@ int main(int argc, char **argv)
     double sx = screenGeom.width()  / REF_W;
     double sy = screenGeom.height() / REF_H;
     double s  = std::min(sx, sy);
-    auto SX = [sx](int v) -> int { return (int)(v * sx); };
-    auto SY = [sy](int v) -> int { return (int)(v * sy); };
-    auto SF = [s](int v)  -> int { return std::max(1, (int)(v * s)); };
+    auto SX = [s](int v) -> int { return (int)(v * s); };
+    auto SY = [s](int v) -> int { return (int)(v * s); };
+    auto SF = [s](int v) -> int { return std::max(1, (int)(v * s)); };
 
     QWidget window;
     window.setObjectName("mainWindow");

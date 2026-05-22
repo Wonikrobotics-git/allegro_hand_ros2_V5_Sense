@@ -87,6 +87,17 @@ def generate_launch_description():
         ros_lib_path = f"/opt/ros/{ros_distro}/lib"
         ros_ld_conf = f"/etc/ld.so.conf.d/ros-{ros_distro}.conf"
 
+        # Collect workspace lib paths that need to be in ldconfig
+        # (LD_LIBRARY_PATH is ignored when the binary has Linux capabilities set via setcap)
+        ws_lib_paths = []
+        ament_prefix = os.environ.get('AMENT_PREFIX_PATH', '')
+        for prefix in ament_prefix.split(':'):
+            lib_path = os.path.join(prefix, 'lib')
+            if os.path.isdir(lib_path) and not lib_path.startswith('/opt/ros/'):
+                ws_lib_paths.append(lib_path)
+
+        lib_paths_content = ros_lib_path + ''.join(f'\\n{p}' for p in ws_lib_paths)
+
         username = getpass.getuser()
         can_port = context.launch_configurations['CAN_DEVICE']
         commands = [
@@ -94,7 +105,7 @@ def generate_launch_description():
             f"sudo ip link set {can_port} type can bitrate 1000000",
             f"sudo ip link set {can_port} up",
             f"sudo sh -c 'echo \"{username} - rtprio 99\" > /etc/security/limits.d/99-allegro-rt.conf'",
-            f"sudo sh -c 'echo {ros_lib_path} > {ros_ld_conf}'",
+            f"sudo sh -c 'printf \"{lib_paths_content}\" > {ros_ld_conf}'",
             f"sudo ldconfig",
             f"sudo setcap cap_sys_nice=ep {allegro_node_grasp_path}"
         ]
