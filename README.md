@@ -16,10 +16,12 @@ This is the official release to control **Allegro Hand V5 Sense** with ROS2. It 
 * **Custom Poses:** Easily save and load custom joint positions.
 * **Motor Current Feedback:** Motor current (mA) per joint is available via `joint_states.effort` in Ethernet (UDP) mode.
 * **Device Configuration Panel:** GUI tool for motor calibration (Ethernet mode).
-* **H-inf Onboard Position Control:** Firmware-side H∞ controller mode; PC sends position targets instead of torque commands.
+* **Robust Control:** Firmware-side H∞ controller mode; PC sends position targets instead of torque commands.
 * **Gravity Feed-Forward:** Send hand Roll/Pitch/Yaw to the firmware so the onboard gravity compensation activates automatically.
 * **Tactile Sensor Visualizer:** Qt-based GUI for real-time display of all 16 tactile sensor values (kPa).
 * **333 Hz Control Loop:** Real-time control at 3 ms intervals with `SCHED_FIFO` priority scheduling.
+* **UDP Ethernet Support:** Connect to the hand over Ethernet (UDP) instead of CAN bus.
+* **Remote IP Configuration:** Change the hand's IP address at runtime via a ROS 2 service or GUI (UDP mode only).
 
 ---
 
@@ -29,7 +31,7 @@ This is the official release to control **Allegro Hand V5 Sense** with ROS2. It 
 
 > [!NOTE]
 > **ROS 2 Humble (Ubuntu 22.04)** — CAN and Ethernet both supported.  
-> **ROS 2 Jazzy (Ubuntu 24.04)** — CAN supported. Ethernet mode is under development.
+> **ROS 2 Jazzy (Ubuntu 24.04)** — CAN and Ethernet both supported.
 
 ```bash
 sudo apt-get update
@@ -65,9 +67,6 @@ You must specify the handedness (right or left).
 
 ### 🌐 PC Network Setup (Ethernet mode only)
 
-> [!WARNING]
-> Ethernet mode is currently supported on **ROS 2 Humble (Ubuntu 22.04)** only. Support for Jazzy (Ubuntu 24.04) is under development.
-
 Before launching with `CAN:=false`, set the PC's network interface (connected to the hand) to a **static IPv4 address in the `192.168.0.x` subnet**.
 
 The hand's default IP is **`192.168.0.50`** (port **`7000`**), so the PC address must be in the same subnet but different from the hand's IP (e.g. `192.168.0.100`).
@@ -87,7 +86,10 @@ ping 192.168.0.50
 ```
 
 > [!NOTE]
-> The hand IP and port can be changed in the firmware. If your hand uses a different address, adjust `TCP_ADDR` in the launch command accordingly.
+> The hand IP and port can be changed at runtime. If your hand uses a different address, adjust `UDP_ADDR` in the launch command accordingly.
+
+> [!WARNING]
+> On **ROS 2 Jazzy (Ubuntu 24.04)**, Fast-DDS occupies **local UDP port 7000** at startup. Do **not** set `LOCAL_PORT` to `7000` — use `8000` or higher instead (e.g. `UDP_ADDR:=192.168.0.50:7000:8000`). The firmware peer port (`7000`) is fixed and unaffected; only the PC-side bind port must be changed.
 
 * **CAN (`CAN:=true`, default)** — Hand on SocketCAN (e.g. `can0`). The launch file runs the usual CAN setup (bitrate, `setcap`, etc.) automatically.
 * **Ethernet (`CAN:=false`)** — **UDP-only** stack on port 7000. PC sends commands (HELLO, TORQUE_CMD, etc.) and receives TELEMETRY_RAW at ~**3 ms** (encoders, currents, sensors, velocity) all on the same UDP socket.
@@ -101,8 +103,8 @@ ros2 launch allegro_hand_controllers allegro_hand.launch.py HAND:=right
 # CAN with a specific interface
 ros2 launch allegro_hand_controllers allegro_hand.launch.py HAND:=right CAN:=true CAN_DEVICE:=can0
 
-# Ethernet (UDP, default peer address 192.168.0.50:7000)
-ros2 launch allegro_hand_controllers allegro_hand.launch.py HAND:=right CAN:=false TCP_ADDR:=192.168.0.50:7000
+# Ethernet (UDP, default peer address 192.168.0.50:7000, local port 8000)
+ros2 launch allegro_hand_controllers allegro_hand.launch.py HAND:=right CAN:=false UDP_ADDR:=192.168.0.50:7000:8000
 ```
 
 If `CAN:=false`, the launch file **skips** interactive CAN bring-up.
@@ -117,8 +119,10 @@ You can customize the launch by adding optional arguments. By default, these are
 | :--- | :--- | :--- |
 | **`VISUALIZE:=true`** | Launch **Rviz2** for real-time hand visualization. | `false` |
 | **`GUI:=true`** | Launch the **GUI Control Tool** instead of using the keyboard. | `false` |
-| **`HINF_MODE:=true`** | Enable **H-inf onboard position control** mode. Firmware must already be configured for H-inf. | `false` |
+| **`HINF_MODE:=true`** | Enable **Robust control** mode. Firmware must already be configured for H-inf. | `false` |
 | **`DEMO:=true`** | Launch the **Sensor Visualizer GUI** for real-time tactile sensor display (no Rviz2). | `false` |
+| **`CAN:=false`** | Use **UDP Ethernet** instead of CAN bus. | `true` |
+| **`UDP_ADDR:=IP:PEER_PORT:LOCAL_PORT`** | Hand IP, firmware UDP port, and local bind port when `CAN:=false`. | `192.168.0.50:7000:8000` |
 
 #### Example Commands:
 
@@ -160,7 +164,7 @@ ros2 run allegro_hand_keyboards allegro_hand_keyboard
 > The keyboard node publishes to `allegroHand_0/lib_cmd` by default. If you are using a different hand index (`NUM`), you need to remap the topic accordingly.
 
 ## 3. Control more than one hand
-To control more than one hand, specify the **CAN port** (or **`CAN:=false TCP_ADDR:=<IP>`** for Ethernet/UDP) and the **Allegro Hand number** (`NUM`) per launch.
+To control more than one hand, specify the **CAN port** (or **`CAN:=false UDP_ADDR:=<IP:PEER:LOCAL>`** for Ethernet/UDP) and the **Allegro Hand number** (`NUM`) per launch.
 
 #### Terminal 1: Launch Hand 0 (Right)
 ```bash
@@ -182,11 +186,48 @@ All topics are automatically remapped with the `allegroHand_<NUM>/` prefix based
 | `0` (default) | `allegroHand_0/` | `allegroHand_0/joint_states`, `allegroHand_0/lib_cmd` |
 | `1` | `allegroHand_1/` | `allegroHand_1/joint_states`, `allegroHand_1/lib_cmd` |
 
+#### UDP Ethernet (two hands, different IPs):
+
+Each hand node must bind a **different local port** on the PC side to avoid conflicts.
+
+```bash
+# Terminal 1: Hand 0 — binds local port 8000
+ros2 launch allegro_hand_controllers allegro_hand.launch.py HAND:=right CAN:=false UDP_ADDR:=192.168.0.50:7000:8000 NUM:=0
+
+# Terminal 2: Hand 1 — binds local port 8001
+ros2 launch allegro_hand_controllers allegro_hand.launch.py HAND:=left CAN:=false UDP_ADDR:=192.168.0.51:7000:8001 NUM:=1
+```
+
 #### Standalone Rviz2
 You can also launch Rviz2 separately (e.g., to visualize a hand that is already running):
 ```bash
 ros2 launch allegro_hand_controllers allegro_viz.launch.py NUM:=0
 ```
+
+---
+
+## 🌐 Changing the Hand's IP Address (UDP Mode)
+
+When connected via UDP, you can change the hand's IP address at runtime using the `set_net_config` ROS 2 service — no physical access required.
+
+> [!IMPORTANT]
+> The hand must be connected and running in UDP mode (`CAN:=false`) before calling this service.
+
+#### Via ROS 2 CLI:
+```bash
+ros2 service call /allegroHand_0/set_net_config \
+  allegro_hand_controllers/srv/SetNetConfig \
+  "{ip: '192.168.0.49', mask: '255.255.255.0', gateway: '192.168.0.1', port: 7000}"
+```
+
+#### Via GUI:
+1. Launch with `GUI:=true` and `CAN:=false`.
+2. Click **Tools → Device Configuration**.
+3. In the **Network Configuration** section, set the 3rd octet, 4th octet, and port.
+4. Click **Apply Network Config**.
+
+> [!NOTE]
+> The new IP is saved to the hand's firmware and takes effect after reboot. After rebooting, relaunch with the new `UDP_ADDR`.
 
 ---
 

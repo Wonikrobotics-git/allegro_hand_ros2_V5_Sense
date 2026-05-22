@@ -307,7 +307,7 @@ int main(int argc, char **argv) {
   struct sched_param sp;
   sp.sched_priority = 80;
   if (sched_setscheduler(0, SCHED_FIFO, &sp) != 0) {
-    fprintf(stderr, "Warning: Failed to set SCHED_FIFO (run setcap cap_sys_nice+ep on this executable)\n");
+    std::cerr << "[allegro_node_grasp] Warning: Failed to set SCHED_FIFO (run setcap cap_sys_nice+ep on this executable)" << std::endl;
   }
 
   auto clean_argv = rclcpp::init_and_remove_ros_arguments(argc, argv);
@@ -316,6 +316,7 @@ int main(int argc, char **argv) {
   if (clean_argv.size() > 1 && clean_argv[1] == std::string("true")) {
     polling = true;
   }
-  AllegroNodeGrasp allegroNode("allegro_node_grasp");
-  allegroNode.doIt(polling);
+  auto allegroNode = std::make_shared<AllegroNodeGrasp>("allegro_node_grasp");
+  allegroNode->doIt(polling);
+  rclcpp::shutdown();
 }

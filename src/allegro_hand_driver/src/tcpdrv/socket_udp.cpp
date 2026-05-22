@@ -185,6 +185,16 @@ int udp_send_header_only(uint8_t type, uint32_t* out_seq)
     return udp_send_packet(type, nullptr, 0, out_seq);
 }
 
+int udp_send_net_config_req(uint32_t* out_seq)
+{
+    return udp_send_packet(TYPE_NET_CONFIG_REQ, nullptr, 0, out_seq);
+}
+
+int udp_send_net_config_write(const NetConfigPayload* cfg, uint32_t* out_seq)
+{
+    return udp_send_packet(TYPE_NET_CONFIG_WRITE, cfg, NET_CONFIG_PAYLOAD, out_seq);
+}
+
 int udp_recv_packet(PacketHeader* header, uint8_t* payload, int max_payload)
 {
     if (udp_socket_ < 0) {

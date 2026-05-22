@@ -2,8 +2,8 @@
 // Base Allegro hand ROS 2 node: CAN/TCP I/O, joint state publish, tactile publish,
 // and control loop. Subclasses (e.g. AllegroNodeGrasp) implement computeDesiredTorque().
 //
-// Uses AllegroHandDrvBase — comm type (CAN or UDP Ethernet / “tcp” param) at runtime
-// via the "comm/COMM_TYPE" ROS parameter.
+// Uses AllegroHandDrvBase — comm type (CAN or UDP Ethernet / “udp” param) at runtime
+// via the “comm/COMM_TYPE” ROS parameter.
 //
 // Created by felixd on 10/1/15.
 //
@@ -32,6 +32,7 @@ using namespace allegro;
 #include <vector>
 #include "allegro_hand_driver/AllegroHandDrv.h"
 #include "candrv/candrv.h"
+#include "allegro_hand_controllers/srv/set_net_config.hpp"
 
 // Control loop period (seconds). 333 Hz.
 #define ALLEGRO_CONTROL_TIME_INTERVAL 0.003
@@ -115,6 +116,8 @@ class AllegroNode: public rclcpp::Node {
   // Communication device (CAN or TCP, selected by comm/COMM_TYPE parameter).
   allegro::AllegroHandDrvBase *canDevice;
   std::mutex *mutex;
+
+  rclcpp::Service<allegro_hand_controllers::srv::SetNetConfig>::SharedPtr net_config_srv;
 
   // lEmergencyStop: 0 ok, <0 hand off -> shutdown. frame: control cycle count (used by BHand).
   int lEmergencyStop = 0;

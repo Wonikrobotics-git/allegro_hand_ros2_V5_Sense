@@ -58,10 +58,10 @@ def generate_launch_description():
         description='Communication selector: true -> CAN, false -> UDP (Ethernet)'
     )
 
-    declare_tcp_addr_arg = DeclareLaunchArgument(
-        'TCP_ADDR',
-        default_value='192.168.0.50:7000',
-        description='Peer IP:UDP_PORT (UDP-only stack; default port 7000) when CAN=false'
+    declare_udp_addr_arg = DeclareLaunchArgument(
+        'UDP_ADDR',
+        default_value='192.168.0.50:7000:8000',
+        description='IP:PEER_PORT:LOCAL_PORT for UDP mode (CAN=false). PEER_PORT=firmware port (7000), LOCAL_PORT=PC bind port (default 8000)'
     )
 
     declare_hinf_arg = DeclareLaunchArgument(
@@ -130,22 +130,23 @@ def generate_launch_description():
         declare_num_arg,
 		declare_gui_arg,
         declare_can_arg,
-        declare_tcp_addr_arg,
+        declare_udp_addr_arg,
         declare_hinf_arg,
         declare_demo_arg,
         OpaqueFunction(function=setup_can),
         Node(
             package='allegro_hand_controllers',
             executable='allegro_node_grasp',
+            name=PythonExpression(["'allegro_node_grasp_", LaunchConfiguration('NUM'), "'"]),
             output='screen',
 			emulate_tty=True,
             parameters=[{'hand_info/which_hand': LaunchConfiguration('HAND')},
             		    {'comm/CAN_CH': LaunchConfiguration('CAN_DEVICE')},
                         {'comm/COMM_TYPE': PythonExpression([
                             "'can' if '", LaunchConfiguration('CAN'),
-                            "'.lower() in ['true','1','yes','on'] else 'tcp'"
+                            "'.lower() in ['true','1','yes','on'] else 'udp'"
                         ])},
-                        {'comm/TCP_ADDR': LaunchConfiguration('TCP_ADDR')},
+                        {'comm/UDP_ADDR': LaunchConfiguration('UDP_ADDR')},
                         {'hinf_mode': PythonExpression([
                             "True if '", LaunchConfiguration('HINF_MODE'),
                             "'.lower() in ['true','1','yes','on'] else False"
@@ -168,6 +169,7 @@ def generate_launch_description():
         ),
         Node(
             package='robot_state_publisher',
+            name=PythonExpression(["'robot_state_publisher_", LaunchConfiguration('NUM'), "'"]),
             output='screen',
 			emulate_tty=True,
             executable='robot_state_publisher',
@@ -188,7 +190,7 @@ def generate_launch_description():
         Node(
             package='allegro_hand_sensor_visualizer',
             executable='allegro_hand_sensor_visualizer_node',
-            name='sensor_gui',
+            name=PythonExpression(["'sensor_gui_", LaunchConfiguration('NUM'), "'"]),
             output='screen',
             condition=IfCondition(LaunchConfiguration('DEMO')),
             parameters=[{'hand_info/which_hand': LaunchConfiguration('HAND')}],
@@ -201,6 +203,7 @@ def generate_launch_description():
 		Node(
             package='allegro_hand_gui',
             executable='allegro_hand_gui_node',
+            name=PythonExpression(["'allegro_hand_gui_node_", LaunchConfiguration('NUM'), "'"]),
             output='screen',
             condition=IfCondition(LaunchConfiguration('GUI')),
    			remappings=[

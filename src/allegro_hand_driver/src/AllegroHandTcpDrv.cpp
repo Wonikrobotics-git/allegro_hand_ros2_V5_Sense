@@ -49,6 +49,7 @@
 #include <string>
 #include <rclcpp/rclcpp.hpp>
 #include <unistd.h>
+#include <arpa/inet.h>
 
 #include "tcpdrv/tcpdrv.h"
 #include "allegro_hand_driver/AllegroHandTcpDrv.h"
@@ -118,29 +119,41 @@ AllegroHandTcpDrv::~AllegroHandTcpDrv()
     TCPAPI::udp_close();
 }
 
+/* Parse "IP", "IP:PEER_PORT", or "IP:PEER_PORT:LOCAL_PORT" */
 bool AllegroHandTcpDrv::_parseAddress(const std::string& addr,
-                                       std::string& ip, int& port)
+                                       std::string& ip, int& peer_port, int& local_port)
 {
-    port = DEFAULT_UDP_PORT;
+    peer_port  = UDP_PEER_PORT;
+    local_port = UDP_LOCAL_PORT;
 
-    size_t colon_pos = addr.rfind(':');
-    if (colon_pos == std::string::npos) {
+    size_t first_colon = addr.find(':');
+    if (first_colon == std::string::npos) {
         ip = addr;
     } else {
-        ip = addr.substr(0, colon_pos);
-        std::string port_str = addr.substr(colon_pos + 1);
-        try {
-            port = std::stoi(port_str);
-        } catch (...) {
-            RCLCPP_ERROR(rclcpp::get_logger(LOG_TAG),
-                "Invalid port in address: %s", addr.c_str());
-            return false;
+        ip = addr.substr(0, first_colon);
+        size_t second_colon = addr.find(':', first_colon + 1);
+        if (second_colon == std::string::npos) {
+            try {
+                peer_port = std::stoi(addr.substr(first_colon + 1));
+            } catch (...) {
+                RCLCPP_ERROR(rclcpp::get_logger(LOG_TAG),
+                    "Invalid port in address: %s", addr.c_str());
+                return false;
+            }
+        } else {
+            try {
+                peer_port  = std::stoi(addr.substr(first_colon + 1, second_colon - first_colon - 1));
+                local_port = std::stoi(addr.substr(second_colon + 1));
+            } catch (...) {
+                RCLCPP_ERROR(rclcpp::get_logger(LOG_TAG),
+                    "Invalid ports in address: %s", addr.c_str());
+                return false;
+            }
         }
     }
 
     if (ip.empty()) {
-        RCLCPP_ERROR(rclcpp::get_logger(LOG_TAG),
-            "Empty IP address");
+        RCLCPP_ERROR(rclcpp::get_logger(LOG_TAG), "Empty IP address");
         return false;
     }
 
@@ -162,11 +175,12 @@ bool AllegroHandTcpDrv::init(std::string addr, int mode)
     }
 
     std::string ip;
-    int peer_port = DEFAULT_UDP_PORT;
-    if (!_parseAddress(addr, ip, peer_port))
+    int peer_port  = UDP_PEER_PORT;
+    int local_port = UDP_LOCAL_PORT;
+    if (!_parseAddress(addr, ip, peer_port, local_port))
         return false;
 
-    if (TCPAPI::udp_open(ip.c_str(), peer_port, UDP_LOCAL_PORT) != 0)
+    if (TCPAPI::udp_open(ip.c_str(), peer_port, local_port) != 0)
         return false;
 
     bool hello_ok = false;
@@ -574,6 +588,104 @@ void AllegroHandTcpDrv::_handleMotorError(const MotorError* err)
         err->joint_index, err->error_status);
 
     _emergency_stop = true;
+}
+
+static bool _waitNetConfigResp(NetConfigPayload& out)
+{
+    for (int attempt = 0; attempt < CMD_ACK_MAX_RETRIES; attempt++) {
+        const auto t0 = std::chrono::steady_clock::now();
+        while (true) {
+            const auto elapsed = std::chrono::steady_clock::now() - t0;
+            if (elapsed >= std::chrono::milliseconds(CMD_ACK_TIMEOUT_MS))
+                break;
+            int ms_left = static_cast<int>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::milliseconds(CMD_ACK_TIMEOUT_MS) - elapsed).count());
+            if (ms_left < 1) ms_left = 1;
+
+            if (TCPAPI::udp_wait_readable(ms_left) <= 0)
+                break;
+
+            PacketHeader header;
+            uint8_t payload[256];
+            if (TCPAPI::udp_recv_packet(&header, payload, sizeof(payload)) != 0)
+                continue;
+            if (header.type == TYPE_NET_CONFIG_RESP &&
+                header.length >= NET_CONFIG_PAYLOAD) {
+                memcpy(&out, payload, sizeof(NetConfigPayload));
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool AllegroHandTcpDrv::getNetConfig(NetConfigPayload& out)
+{
+    uint32_t seq = 0;
+    if (TCPAPI::udp_send_net_config_req(&seq) != 0) {
+        RCLCPP_ERROR(rclcpp::get_logger(LOG_TAG),
+            "UDP: failed to send NET_CONFIG_REQ");
+        return false;
+    }
+
+    if (!_waitNetConfigResp(out)) {
+        RCLCPP_ERROR(rclcpp::get_logger(LOG_TAG),
+            "UDP: NET_CONFIG_RESP timeout");
+        return false;
+    }
+
+    /* Payload bytes are little-endian: reverse for display */
+    RCLCPP_INFO(rclcpp::get_logger(LOG_TAG),
+        "NET_CONFIG: ip=%d.%d.%d.%d mask=%d.%d.%d.%d gw=%d.%d.%d.%d port=%d",
+        out.ip[3], out.ip[2], out.ip[1], out.ip[0],
+        out.mask[3], out.mask[2], out.mask[1], out.mask[0],
+        out.gateway[3], out.gateway[2], out.gateway[1], out.gateway[0],
+        out.port);
+    return true;
+}
+
+bool AllegroHandTcpDrv::setNetConfig(const std::string& ip, const std::string& mask,
+                                      const std::string& gw, uint16_t port)
+{
+    NetConfigPayload cfg;
+    memset(&cfg, 0, sizeof(cfg));
+
+    /* Payload is little-endian per spec: reverse network byte order from inet_pton */
+    auto parseIp = [](const std::string& s, uint8_t* out) -> bool {
+        struct in_addr addr;
+        if (inet_pton(AF_INET, s.c_str(), &addr) <= 0) return false;
+        uint8_t be[4];
+        memcpy(be, &addr.s_addr, 4);
+        out[0] = be[3]; out[1] = be[2]; out[2] = be[1]; out[3] = be[0];
+        return true;
+    };
+
+    if (!parseIp(ip, cfg.ip) || !parseIp(mask, cfg.mask) || !parseIp(gw, cfg.gateway)) {
+        RCLCPP_ERROR(rclcpp::get_logger(LOG_TAG),
+            "UDP: invalid IP/mask/gw for NET_CONFIG_WRITE");
+        return false;
+    }
+    cfg.port = port;
+
+    uint32_t seq = 0;
+    if (TCPAPI::udp_send_net_config_write(&cfg, &seq) != 0) {
+        RCLCPP_ERROR(rclcpp::get_logger(LOG_TAG),
+            "UDP: failed to send NET_CONFIG_WRITE");
+        return false;
+    }
+
+    NetConfigPayload resp;
+    if (!_waitNetConfigResp(resp)) {
+        RCLCPP_ERROR(rclcpp::get_logger(LOG_TAG),
+            "UDP: NET_CONFIG_WRITE ACK timeout");
+        return false;
+    }
+
+    RCLCPP_INFO(rclcpp::get_logger(LOG_TAG),
+        "NET_CONFIG_WRITE ACK: ip=%d.%d.%d.%d port=%d",
+        resp.ip[3], resp.ip[2], resp.ip[1], resp.ip[0], resp.port);
+    return true;
 }
 
 } /* namespace allegro */

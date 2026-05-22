@@ -72,6 +72,9 @@ int udp_send_hello_req(uint32_t* out_seq = nullptr);
 
 int udp_send_header_only(uint8_t type, uint32_t* out_seq = nullptr);
 
+int udp_send_net_config_req(uint32_t* out_seq = nullptr);
+int udp_send_net_config_write(const NetConfigPayload* cfg, uint32_t* out_seq = nullptr);
+
 /**
  * Non-blocking receive: one datagram if available.
  * @return 0 complete packet, -1 no packet / short / bad magic, -2 fatal

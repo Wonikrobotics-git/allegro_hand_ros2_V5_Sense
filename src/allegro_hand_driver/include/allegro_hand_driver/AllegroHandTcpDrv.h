@@ -43,7 +43,7 @@
  *  Controller migration:
  *    1. #include "allegro_hand_driver/AllegroHandTcpDrv.h"
  *    2. allegro::AllegroHandTcpDrv* canDevice = new allegro::AllegroHandTcpDrv();
- *    3. canDevice->init("192.168.1.100");       // optional :PORT (UDP peer, default 7000)
+ *    3. canDevice->init("192.168.0.50");         // optional :PORT (UDP peer, default 7000)
  *    4. canDevice->readCANFrames();              // same API (alias for readFrames)
  *
  *  Created on:         March 23, 2026
@@ -95,6 +95,10 @@ public:
     void getJointVelocity(int32_t *velocity); ///< get raw motor velocity
     void getSensorData(uint16_t *sensor);    ///< get raw 16-channel sensor values
 
+    bool getNetConfig(NetConfigPayload& out);
+    bool setNetConfig(const std::string& ip, const std::string& mask,
+                      const std::string& gw, uint16_t port);
+
 private:
     double _curr_position[DOF_JOINTS];       ///< current joint position (radian)
     double _curr_torque[DOF_JOINTS];         ///< current joint torque (Nm)
@@ -132,7 +136,7 @@ private:
     void _parseTelemetry(const TelemetryPacket* telemetry);
     void _parseHelloResp(const HelloResp* resp);
     void _handleMotorError(const MotorError* err);
-    bool _parseAddress(const std::string& addr, std::string& ip, int& port);
+    bool _parseAddress(const std::string& addr, std::string& ip, int& peer_port, int& local_port);
 
     void _applySerialPayload(const SerialResp* sr);
     /** After HELLO: request serial (same role as CAN ID_RTR_SERIAL). */

@@ -52,10 +52,11 @@
 #define PROTO_MAGIC              0x32423556  /* Frame sync / magic word (little-endian) */
 #define PROTO_VERSION            0x01
 
-/** Default / recommended UDP port (PC bind + FW peer); configurable. */
-#define DEFAULT_UDP_PORT         7000
+/** Firmware peer port (fixed at 7000 in firmware). */
+#define UDP_PEER_PORT            7000
+/** Default local bind port for PC side. Use a different port per hand for multi-hand setups. */
+#define DEFAULT_UDP_PORT         8000
 #define UDP_LOCAL_PORT           DEFAULT_UDP_PORT
-#define UDP_PEER_PORT            DEFAULT_UDP_PORT
 
 /*=====================================================*/
 /*       Packet Types (UDP-only spec)                   */
@@ -164,6 +165,13 @@ typedef struct {
     uint8_t  joint_index;
     uint8_t  error_status;
 } MotorError;
+
+typedef struct {
+    uint8_t  ip[4];
+    uint8_t  mask[4];
+    uint8_t  gateway[4];
+    uint16_t port;
+} NetConfigPayload;
 
 #pragma pack(pop)
 

@@ -13,6 +13,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(ament_index_cpp REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(allegro_hand_controllers REQUIRED)
 
 # Include directories
 include_directories(
@@ -49,7 +50,7 @@ add_executable(${PROJECT_NAME}_node ${SOURCES} ${UIS})
 target_link_libraries(${PROJECT_NAME}_node
   Qt5::Widgets yaml-cpp
 )
-ament_target_dependencies(${PROJECT_NAME}_node rclcpp std_msgs sensor_msgs ament_index_cpp yaml-cpp)
+ament_target_dependencies(${PROJECT_NAME}_node rclcpp std_msgs sensor_msgs ament_index_cpp yaml-cpp allegro_hand_controllers)
 # Install targets
 install(TARGETS ${PROJECT_NAME}_node
   DESTINATION lib/${PROJECT_NAME}

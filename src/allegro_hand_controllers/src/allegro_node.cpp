@@ -63,20 +63,41 @@ AllegroNode::AllegroNode(const std::string nodeName)
   // Initialize communication device
   canDevice = 0;
 
-  // Select communication type: "can" (default) or "tcp"
+  // Select communication type: "can" (default) or "udp"
   declare_parameter("comm/COMM_TYPE", "can");
   auto comm_type = this->get_parameter("comm/COMM_TYPE").as_string();
 
-  if (comm_type == "tcp") {
-    /* Parameter value "tcp" selects Ethernet with UDP-only transport. */
+  if (comm_type == "udp") {
     canDevice = new allegro::AllegroHandTcpDrv();
-    declare_parameter("comm/TCP_ADDR", "192.168.0.50:7000");
-    auto tcp_addr = this->get_parameter("comm/TCP_ADDR").as_string();
+    declare_parameter("comm/UDP_ADDR", "192.168.0.50:7000:8000");
+    auto udp_addr = this->get_parameter("comm/UDP_ADDR").as_string();
     RCLCPP_INFO(this->get_logger(),
-        "COMM: Using UDP Ethernet (port in address is UDP peer port), %s",
-        tcp_addr.c_str());
-    if (canDevice->init(tcp_addr)) {
+        "COMM: Using UDP Ethernet, peer address: %s",
+        udp_addr.c_str());
+    if (canDevice->init(udp_addr)) {
         usleep(3000);
+        net_config_srv = this->create_service<allegro_hand_controllers::srv::SetNetConfig>(
+            "allegroHand/set_net_config",
+            [this](const std::shared_ptr<allegro_hand_controllers::srv::SetNetConfig::Request> req,
+                   std::shared_ptr<allegro_hand_controllers::srv::SetNetConfig::Response> res) {
+                auto* tcpDrv = dynamic_cast<allegro::AllegroHandTcpDrv*>(canDevice);
+                if (!tcpDrv) {
+                    res->success = false;
+                    res->message = "Not in UDP Ethernet mode";
+                    return;
+                }
+                uint16_t port = req->port == 0 ? 7000 : req->port;
+                std::string mask = req->mask.empty() ? "255.255.255.0" : req->mask;
+                std::string gw   = req->gateway.empty() ? "192.168.0.1" : req->gateway;
+                if (tcpDrv->setNetConfig(req->ip, mask, gw, port)) {
+                    res->success = true;
+                    res->message = "NET_CONFIG_WRITE sent. Reboot hand to apply.";
+                } else {
+                    res->success = false;
+                    res->message = "NET_CONFIG_WRITE failed or timed out";
+                }
+            });
+        RCLCPP_INFO(this->get_logger(), "Service ready: allegroHand/set_net_config");
     }
     else {
         delete canDevice;
@@ -120,8 +141,6 @@ AllegroNode::AllegroNode(const std::string nodeName)
 AllegroNode::~AllegroNode() {
   if (canDevice) delete canDevice;
   delete mutex;
-
-  rclcpp::shutdown();
 }
 
 // Called when a desired joint state is received on DESIRED_STATE_TOPIC (used by base class; grasp node uses setJointCallback).
@@ -314,7 +333,7 @@ void AllegroNode::updateController() {
         if ((fingertip_sensor[0] + fingertip_sensor[1] + fingertip_sensor[3]) > 3.0f)
           f[0] = f[1] = f[2] = force_get;
         else
-          f[0] = f[1] = f[2] = 10.0f;
+          f[0] = f[1] = f[2] = 2.0f;
       }
 
       // Subclass computes desired_torque (e.g. BHand).

@@ -24,11 +24,19 @@ find_package(allegro_hand_driver REQUIRED)
 find_package(bhand REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(ament_index_cpp REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "srv/SetNetConfig.srv"
+  DEPENDENCIES std_msgs
+)
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)
 
 include_directories(
   include
   ${allegro_hand_driver_INCLUDE_DIRS}
   ${bhand_INCLUDE_DIRS}
+  ${CMAKE_CURRENT_BINARY_DIR}/rosidl_generator_cpp
 )
 
 # ─────────────────────────────────────
@@ -38,6 +46,7 @@ include_directories(
 # shared libs (e.g. libsensor_msgs__rosidl_generator_c.so) that are only
 # referenced from allegro_node.o — see linker DT_NEEDED ordering with .a archives.
 add_library(allegro_node OBJECT src/allegro_node.cpp)
+add_dependencies(allegro_node ${PROJECT_NAME}__rosidl_typesupport_cpp)
 ament_target_dependencies(
   allegro_node rclcpp sensor_msgs std_msgs visualization_msgs geometry_msgs allegro_hand_driver ament_index_cpp
 )
@@ -57,6 +66,7 @@ target_link_libraries(allegro_node_grasp
   yaml-cpp
   ${bhand_LIBRARIES}
   ament_index_cpp::ament_index_cpp
+  "${cpp_typesupport_target}"
 )
 ament_target_dependencies(allegro_node_grasp rclcpp sensor_msgs std_msgs visualization_msgs geometry_msgs allegro_hand_driver yaml-cpp bhand ament_index_cpp)
 

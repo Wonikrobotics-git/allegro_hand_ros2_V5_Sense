@@ -102,7 +102,7 @@
     <axis xyz="0 1 0"/>
     <parent link="link_0_0"/>
     <child link="link_1_0"/>
-    <origin xyz="0 -0.000 0.03296"/>
+    <origin xyz="0 -0.000 0.03546"/>
     <dynamics damping="7" friction="10"/>
   </joint>
   <!-- [LINK 2, 6, 10]-->
@@ -248,7 +248,7 @@
     <axis xyz="0 1 0"/>
     <parent link="link_4_0"/>
     <child link="link_5_0"/>
-    <origin xyz="0 -0.000 0.03296"/>
+    <origin xyz="0 -0.000 0.03546"/>
     <dynamics damping="7" friction="10"/>
   </joint>
   <!-- [LINK 2, 6, 10]-->
@@ -394,7 +394,7 @@
     <axis xyz="0 1 0"/>
     <parent link="link_8_0"/>
     <child link="link_9_0"/>
-    <origin xyz="0 -0.000 0.03296"/>
+    <origin xyz="0 -0.000 0.03546"/>
     <dynamics damping="3" friction="5"/>
   </joint>
   <!-- [LINK 2, 6, 10]-->

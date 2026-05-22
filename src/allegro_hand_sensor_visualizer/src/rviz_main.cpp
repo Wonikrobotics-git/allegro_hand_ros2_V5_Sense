@@ -304,17 +304,17 @@ int main(int argc, char **argv)
     if (whichHand == "left") {
         int lo = SX(375);
         sensor3_label->setGeometry(SX(890) + lo + DX+FX, SY(80)+DY+FY, lw, lh);
-        madi_sensor3_1_label->setGeometry(SX(910) + lo + DX, SY(280)+DY, lws, lhs);
-        madi_sensor3_2_label->setGeometry(SX(930) + lo + DX, SY(430)+DY, lws, lhs);
-        madi_sensor3_3_label->setGeometry(SX(940) + lo + DX, SY(490)+DY, lws, lhs);
+        madi_sensor1_1_label->setGeometry(SX(910) + lo + DX, SY(280)+DY, lws, lhs);
+        madi_sensor1_2_label->setGeometry(SX(930) + lo + DX, SY(430)+DY, lws, lhs);
+        madi_sensor1_3_label->setGeometry(SX(940) + lo + DX, SY(490)+DY, lws, lhs);
         sensor2_label->setGeometry(SX(1090) + lo + DX+FX, SY(70)+DY+FY, lw, lh);
         madi_sensor2_1_label->setGeometry(SX(1100) + lo + DX, SY(270)+DY, lws, lhs);
         madi_sensor2_2_label->setGeometry(SX(1100) + lo + DX, SY(420)+DY, lws, lhs);
         madi_sensor2_3_label->setGeometry(SX(1100) + lo + DX, SY(490)+DY, lws, lhs);
         sensor1_label->setGeometry(SX(1295) + lo + DX+FX, SY(80)+DY+FY, lw, lh);
-        madi_sensor1_1_label->setGeometry(SX(1295) + lo + DX, SY(280)+DY, lws, lhs);
-        madi_sensor1_2_label->setGeometry(SX(1285) + lo + DX, SY(430)+DY, lws, lhs);
-        madi_sensor1_3_label->setGeometry(SX(1280) + lo + DX, SY(490)+DY, lws, lhs);
+        madi_sensor3_1_label->setGeometry(SX(1295) + lo + DX, SY(280)+DY, lws, lhs);
+        madi_sensor3_2_label->setGeometry(SX(1285) + lo + DX, SY(430)+DY, lws, lhs);
+        madi_sensor3_3_label->setGeometry(SX(1280) + lo + DX, SY(490)+DY, lws, lhs);
         sensor4_label->setGeometry(x4 - SX(745) + DX+FX, SY(860)+DY+FY, lw, lh);
         madi_sensor4_1_label->setGeometry(x4 - SX(590) + DX, SY(860)+DY, lws, lhs);
         madi_sensor4_2_label->setGeometry(x4 - SX(440) + DX, SY(860)+DY, lws, lhs);
