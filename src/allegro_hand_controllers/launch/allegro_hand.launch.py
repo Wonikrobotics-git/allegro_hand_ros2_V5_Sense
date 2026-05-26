@@ -188,7 +188,7 @@ def generate_launch_description():
             remappings=[
                 ('tf', PythonExpression(["'allegroHand_",LaunchConfiguration('NUM'),"/tf'"])),
                 ('joint_states',PythonExpression(["'allegroHand_",LaunchConfiguration('NUM'),"/joint_states'"])),
-                ('robot_description', 'allegro_hand_description')
+                ('robot_description',PythonExpression(["'allegroHand_",LaunchConfiguration('NUM'),"/allegro_hand_description'"]))
             ]
         ),
         # Include the allegro_viz.launch.py file if VISUALIZE is true

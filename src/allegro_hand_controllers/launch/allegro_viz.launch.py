@@ -23,6 +23,7 @@ def generate_launch_description():
             remappings=[
                 ('tf', PythonExpression(["'allegroHand_", LaunchConfiguration('NUM'), "/tf'"])),
                 ('/fingertip_arrow_markers', PythonExpression(["'allegroHand_", LaunchConfiguration('NUM'), "/fingertip_arrow_markers'"])),
+                ('/allegro_hand_description', PythonExpression(["'allegroHand_",LaunchConfiguration('NUM'),"/allegro_hand_description'"])),
             ]
         )
     ])

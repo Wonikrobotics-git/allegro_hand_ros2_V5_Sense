@@ -65,6 +65,10 @@ You must specify the handedness (right or left).
 
 **Communication:** Choose **CAN** (default) or **Ethernet (UDP)** when you launch. The same `allegro_node_grasp` binary is used; only the transport changes.
 
+> [!IMPORTANT]  
+> **Physical Hardware Switch Required (CAN ↔ Ethernet/UDP)**  
+> Before launching the node or configuring the PC network interface, **the physical hardware communication mode on the Allegro Hand must be switched first**. Please refer to **Chapter 12.1 of the User Manual** to configure the internal dip switches and physical wiring setup.  
+
 ### 🌐 PC Network Setup (Ethernet mode only)
 
 Before launching with `CAN:=false`, set the PC's network interface (connected to the hand) to a **static IPv4 address in the `192.168.0.x` subnet**.
