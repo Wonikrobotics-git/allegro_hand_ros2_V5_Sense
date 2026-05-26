@@ -138,6 +138,11 @@ You can customize the launch by adding optional arguments. By default, these are
   ```bash
   ros2 launch allegro_hand_controllers allegro_hand.launch.py HAND:=right DEMO:=true
   ```
+  
+* **To control the Allegro Hand through UDP:**
+  ```bash
+  ros2 launch allegro_hand_controllers allegro_hand.launch.py HAND:=right CAN:=false UDP_ADDR:=192.168.0.50:7000:8000
+  ```
 
 ## 2. Run Keyboard Node
 To send pre-defined commands using your keyboard:
@@ -487,6 +492,11 @@ ros2 topic pub --once /allegroHand_0/lib_cmd std_msgs/msg/String "{data: hinf_of
 | PC computes torque (BHand library) and sends torque commands | PC sends position targets; firmware H∞ controller computes torque internally |
 | `allegroHand/joint_cmd` used for PD tracking | Same topic used; targets forwarded directly to firmware |
 
+#### Example command to publish 0.0 rad target for all 16 joints:
+```bash
+ros2 topic pub --once /allegroHand_0/joint_cmd sensor_msgs/msg/JointState "{position: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}"
+```
+
 > [!NOTE]
 > When H-inf mode is first activated, desired positions are automatically synced to the current joint positions to prevent sudden motion.
 
@@ -594,12 +604,21 @@ Motor calibration adjusts the hand’s **encoder / joint angle reference** per f
 After calibration **finishes successfully**, the firmware **redefines the angle origin**: **whatever pose the hand was in during calibration is taken as the new reference**, so **reported joint angles will read as 0° for the joints that the firmware maps that way.** In the same convention, **`joint13` is reported as 90°** (not 0°).
 
 
+### ⚠️ Emergency: Loss of Firmware Serial Number
+
+> [!WARNING]
+> **Loss of Firmware Serial Number**  
+> Very rarely, the hand's internal firmware serial number may be erased or lost. This will prevent the driver from identifying the hand's handedness (Right/Left) or initializing properly.  
+> **If you encounter this issue, do not attempt to re-flash or repair the firmware yourself. Please contact Wonik Robotics community forum for support.**  
+
+
 ---
 
 ## 🔗 Useful Links
 * **Official Allegro Hand Website:** [https://www.allegrohand.com/](https://www.allegrohand.com/)
 * **Community Forum:** [https://www.allegrohand.com/forum](https://www.allegrohand.com/forum)
 * **Allegro Hand V5 Plus ROS2 Package:** [Wonik Robotics GitHub](https://github.com/Wonikrobotics-git/allegro_hand_ros2_v5)
+* **Allegro Hand V5 Sense Firmware Repository:** [V5_Sense_firmware](https://github.com/Wonikrobotics-git/allegro_hand_V5_sense_firmware)
    
 
 ---
