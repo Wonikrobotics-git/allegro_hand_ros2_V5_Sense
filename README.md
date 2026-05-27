@@ -612,11 +612,23 @@ After calibration **finishes successfully**, the firmware **redefines the angle 
 
 > [!WARNING]
 > **Loss of Firmware Serial Number**  
-> Very rarely, the hand's internal firmware serial number may be erased or lost. This will prevent the driver from identifying the hand's handedness (Right/Left) or initializing properly.  
+> Very rarely, the hand's internal firmware serial number may be erased or lost. This will prevent the driver from identifying the hand's handedness (Right/Left) or initializing properly.
 > **If you encounter this issue, do not attempt to re-flash or repair the firmware yourself. Please contact Wonik Robotics community forum for support.**  
 
 
 ---
+
+## 🆙 Firmware Updater
+
+To update the firmware of the Allegro Hand V5 Sense, you can use the Firmware Updater utility.
+
+* **Firmware Updater:** [Firmware Updater]()
+
+> [!NOTE]  
+> For detailed instructions on how to perform the firmware update, please refer to **Section 14 of the User Manual**.
+
+---
+
 
 ## 🔗 Useful Links
 * **Official Allegro Hand Website:** [https://www.allegrohand.com/](https://www.allegrohand.com/)
