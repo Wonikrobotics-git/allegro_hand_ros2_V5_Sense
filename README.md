@@ -622,7 +622,7 @@ After calibration **finishes successfully**, the firmware **redefines the angle 
 
 To update the firmware of the Allegro Hand V5 Sense, you can use the Firmware Updater utility.
 
-* **Firmware Updater:** [Firmware Updater]()
+* **Firmware Updater:** [Firmware Updater](https://www.allegrohand.com/sub/tech/t.php?idx=23)
 
 > [!NOTE]  
 > For detailed instructions on how to perform the firmware update, please refer to **Section 14 of the User Manual**.
