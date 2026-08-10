@@ -1,0 +1,9 @@
+# NOTE: Git LFS is intentionally NOT used here.
+#
+# The upstream Isaac Lab template tracked *.usd / *.usda (and other binaries) with LFS. The hand
+# assets in 'asset/' total only ~13 MB, and the rest of this repository uses no LFS at all, so
+# requiring git-lfs would only mean that anyone cloning without it ends up with pointer files
+# instead of usable USD. Keep new binaries as plain files unless they get genuinely large.
+
+*.bat text eol=crlf
+*.sh text eol=lf

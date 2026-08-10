@@ -1,0 +1,394 @@
+#usda 1.0
+(
+    customLayerData = {
+        string creator = "URDF USD Converter v0.1.2"
+    }
+    defaultPrim = "allegro_hand_left"
+    doc = """Generated from Composed Stage of root layer /tmp/tmpen_43vpy/allegro_hand_left.usdc
+
+
+Generated from Composed Stage of root layer /tmp/urdf_import_allegro_hand_description_left_4hlgx06n/usdex_allegro_hand_description_left/allegro_hand_left.usdc
+
+
+Generated from Composed Stage of root layer /tmp/urdf_import_allegro_hand_description_left_4hlgx06n/temp_allegro_hand_description_left/allegro_hand_description_left.usd
+"""
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+over "allegro_hand_left" (
+    prepend apiSchemas = ["IsaacRobotAPI"]
+)
+{
+    prepend rel isaac:physics:robotJoints = [
+        </allegro_hand_left/Physics/global>,
+        </allegro_hand_left/Physics/joint_0_0>,
+        </allegro_hand_left/Physics/joint_4_0>,
+        </allegro_hand_left/Physics/joint_8_0>,
+        </allegro_hand_left/Physics/joint_12_0>,
+        </allegro_hand_left/Physics/joint_1_0>,
+        </allegro_hand_left/Physics/joint_2_0>,
+        </allegro_hand_left/Physics/joint_3_0>,
+        </allegro_hand_left/Physics/joint_3_0_tip>,
+        </allegro_hand_left/Physics/joint_5_0>,
+        </allegro_hand_left/Physics/joint_6_0>,
+        </allegro_hand_left/Physics/joint_7_0>,
+        </allegro_hand_left/Physics/joint_7_0_tip>,
+        </allegro_hand_left/Physics/joint_9_0>,
+        </allegro_hand_left/Physics/joint_10_0>,
+        </allegro_hand_left/Physics/joint_11_0>,
+        </allegro_hand_left/Physics/joint_11_0_tip>,
+        </allegro_hand_left/Physics/joint_13_0>,
+        </allegro_hand_left/Physics/joint_14_0>,
+        </allegro_hand_left/Physics/joint_15_0>,
+        </allegro_hand_left/Physics/joint_15_0_tip>,
+    ]
+    prepend rel isaac:physics:robotLinks = [
+        </allegro_hand_left/Geometry/world/palm_link>,
+        </allegro_hand_left/Geometry/world/palm_link/link_0_0>,
+        </allegro_hand_left/Geometry/world/palm_link/link_0_0/link_1_0>,
+        </allegro_hand_left/Geometry/world/palm_link/link_0_0/link_1_0/link_2_0>,
+        </allegro_hand_left/Geometry/world/palm_link/link_0_0/link_1_0/link_2_0/link_3_0>,
+        </allegro_hand_left/Geometry/world/palm_link/link_0_0/link_1_0/link_2_0/link_3_0/link_3_0_tip>,
+        </allegro_hand_left/Geometry/world/palm_link/link_4_0>,
+        </allegro_hand_left/Geometry/world/palm_link/link_4_0/link_5_0>,
+        </allegro_hand_left/Geometry/world/palm_link/link_4_0/link_5_0/link_6_0>,
+        </allegro_hand_left/Geometry/world/palm_link/link_4_0/link_5_0/link_6_0/link_7_0>,
+        </allegro_hand_left/Geometry/world/palm_link/link_4_0/link_5_0/link_6_0/link_7_0/link_7_0_tip>,
+        </allegro_hand_left/Geometry/world/palm_link/link_8_0>,
+        </allegro_hand_left/Geometry/world/palm_link/link_8_0/link_9_0>,
+        </allegro_hand_left/Geometry/world/palm_link/link_8_0/link_9_0/link_10_0>,
+        </allegro_hand_left/Geometry/world/palm_link/link_8_0/link_9_0/link_10_0/link_11_0>,
+        </allegro_hand_left/Geometry/world/palm_link/link_8_0/link_9_0/link_10_0/link_11_0/link_11_0_tip>,
+        </allegro_hand_left/Geometry/world/palm_link/link_12_0>,
+        </allegro_hand_left/Geometry/world/palm_link/link_12_0/link_13_0>,
+        </allegro_hand_left/Geometry/world/palm_link/link_12_0/link_13_0/link_14_0>,
+        </allegro_hand_left/Geometry/world/palm_link/link_12_0/link_13_0/link_14_0/link_15_0>,
+        </allegro_hand_left/Geometry/world/palm_link/link_12_0/link_13_0/link_14_0/link_15_0/link_15_0_tip>,
+    ]
+    token isaac:robotType = "Default"
+
+    over "Geometry"
+    {
+        over "world"
+        {
+            over "palm_link" (
+                prepend apiSchemas = ["IsaacLinkAPI"]
+            )
+            {
+                over "link_0_0" (
+                    prepend apiSchemas = ["IsaacLinkAPI"]
+                )
+                {
+                    over "link_1_0" (
+                        prepend apiSchemas = ["IsaacLinkAPI"]
+                    )
+                    {
+                        over "link_2_0" (
+                            prepend apiSchemas = ["IsaacLinkAPI"]
+                        )
+                        {
+                            over "link_3_0" (
+                                prepend apiSchemas = ["IsaacLinkAPI"]
+                            )
+                            {
+                                over "link_3_0_tip" (
+                                    prepend apiSchemas = ["IsaacLinkAPI"]
+                                )
+                                {
+                                }
+                            }
+
+                            over "link_sensor_2_0" (
+                                prepend apiSchemas = ["IsaacSiteAPI"]
+                            )
+                            {
+                            }
+                        }
+
+                        over "link_sensor_0_0" (
+                            prepend apiSchemas = ["IsaacSiteAPI"]
+                        )
+                        {
+                        }
+
+                        over "link_sensor_1_0" (
+                            prepend apiSchemas = ["IsaacSiteAPI"]
+                        )
+                        {
+                        }
+                    }
+                }
+
+                over "link_4_0" (
+                    prepend apiSchemas = ["IsaacLinkAPI"]
+                )
+                {
+                    over "link_5_0" (
+                        prepend apiSchemas = ["IsaacLinkAPI"]
+                    )
+                    {
+                        over "link_6_0" (
+                            prepend apiSchemas = ["IsaacLinkAPI"]
+                        )
+                        {
+                            over "link_7_0" (
+                                prepend apiSchemas = ["IsaacLinkAPI"]
+                            )
+                            {
+                                over "link_7_0_tip" (
+                                    prepend apiSchemas = ["IsaacLinkAPI"]
+                                )
+                                {
+                                }
+                            }
+
+                            over "link_sensor_5_0" (
+                                prepend apiSchemas = ["IsaacSiteAPI"]
+                            )
+                            {
+                            }
+                        }
+
+                        over "link_sensor_3_0" (
+                            prepend apiSchemas = ["IsaacSiteAPI"]
+                        )
+                        {
+                        }
+
+                        over "link_sensor_4_0" (
+                            prepend apiSchemas = ["IsaacSiteAPI"]
+                        )
+                        {
+                        }
+                    }
+                }
+
+                over "link_8_0" (
+                    prepend apiSchemas = ["IsaacLinkAPI"]
+                )
+                {
+                    over "link_9_0" (
+                        prepend apiSchemas = ["IsaacLinkAPI"]
+                    )
+                    {
+                        over "link_10_0" (
+                            prepend apiSchemas = ["IsaacLinkAPI"]
+                        )
+                        {
+                            over "link_11_0" (
+                                prepend apiSchemas = ["IsaacLinkAPI"]
+                            )
+                            {
+                                over "link_11_0_tip" (
+                                    prepend apiSchemas = ["IsaacLinkAPI"]
+                                )
+                                {
+                                }
+                            }
+
+                            over "link_sensor_8_0" (
+                                prepend apiSchemas = ["IsaacSiteAPI"]
+                            )
+                            {
+                            }
+                        }
+
+                        over "link_sensor_6_0" (
+                            prepend apiSchemas = ["IsaacSiteAPI"]
+                        )
+                        {
+                        }
+
+                        over "link_sensor_7_0" (
+                            prepend apiSchemas = ["IsaacSiteAPI"]
+                        )
+                        {
+                        }
+                    }
+                }
+
+                over "link_12_0" (
+                    prepend apiSchemas = ["IsaacLinkAPI"]
+                )
+                {
+                    over "link_13_0" (
+                        prepend apiSchemas = ["IsaacLinkAPI"]
+                    )
+                    {
+                        over "link_14_0" (
+                            prepend apiSchemas = ["IsaacLinkAPI"]
+                        )
+                        {
+                            over "link_15_0" (
+                                prepend apiSchemas = ["IsaacLinkAPI"]
+                            )
+                            {
+                                over "link_15_0_tip" (
+                                    prepend apiSchemas = ["IsaacLinkAPI"]
+                                )
+                                {
+                                }
+
+                                over "link_sensor_10_0" (
+                                    prepend apiSchemas = ["IsaacSiteAPI"]
+                                )
+                                {
+                                }
+                            }
+
+                            over "link_sensor_9_0" (
+                                prepend apiSchemas = ["IsaacSiteAPI"]
+                            )
+                            {
+                            }
+                        }
+                    }
+                }
+
+                over "link_sensor_palm_0" (
+                    prepend apiSchemas = ["IsaacSiteAPI"]
+                )
+                {
+                }
+
+                over "link_sensor_palm_1" (
+                    prepend apiSchemas = ["IsaacSiteAPI"]
+                )
+                {
+                }
+            }
+        }
+    }
+
+    over "Physics"
+    {
+        over "global" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_0_0" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_1_0" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_2_0" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_3_0" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_3_0_tip" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_4_0" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_5_0" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_6_0" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_7_0" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_7_0_tip" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_8_0" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_9_0" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_10_0" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_11_0" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_11_0_tip" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_12_0" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_13_0" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_14_0" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_15_0" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+
+        over "joint_15_0_tip" (
+            prepend apiSchemas = ["IsaacJointAPI"]
+        )
+        {
+        }
+    }
+}
+

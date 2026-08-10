@@ -1,11 +1,35 @@
 # 🖐️ allegro_hand_ros2_V5_Sense
 
-![ROS2](https://img.shields.io/badge/ROS2-Humble%20%7C%20Jazzy-blue) ![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-orange) ![Support](https://img.shields.io/badge/Support-V5%20Sense%20Only-red) ![Comm](https://img.shields.io/badge/Communication-CAN%20%7C%20Ethernet-green)
+![ROS2](https://img.shields.io/badge/ROS2-Humble%20%7C%20Jazzy-blue) ![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-orange) ![Support](https://img.shields.io/badge/Support-V5%20Sense%20Only-red) ![Comm](https://img.shields.io/badge/Communication-CAN%20%7C%20Ethernet-green) ![Isaac Lab](https://img.shields.io/badge/Isaac%20Lab-3.0-76b900)
 
 This is the official release to control **Allegro Hand V5 Sense** with ROS2. It is optimized for torque-based control and features improved interfaces and controllers developed by Soohoon Yang(Hibo) in Wonik Robotics.
 
 > [!IMPORTANT]  
 > This package **Only supports V5 Sense**. For the V5 Plus model, please visit the [Allegro Hand V5 ROS2 repository](https://github.com/Wonikrobotics-git/allegro_hand_ros2_v5).
+
+---
+
+## 🆕 What's New — Isaac Lab Example (2026-08)
+
+An **Isaac Lab simulation example** has been added under [`src/allegro_hand_isaaclab/`](src/allegro_hand_isaaclab). It spawns the V5 Sense **left and right hands** in NVIDIA Isaac Lab and carries them through to reinforcement learning training — no ROS 2 and no physical hand required.
+
+| Added | Description |
+| :--- | :--- |
+| **Dual-hand USD assets** | Left / right V5 Sense hands converted from URDF, with tactile sensor sites, ready-to-use `ArticulationCfg` for both. |
+| **`run_sim.py` demo** | Zero-install entry point that spawns the hands and loops a recorded trajectory (`wave`, `grasp`). |
+| **`Template-V5-Sense-Dual-Hand-Direct-v0`** | Gym-registered dual-hand `DirectRLEnv` — 32 actions, 64 observations, placeholder reward to build your own task on. |
+| **skrl PPO scripts** | `scripts/skrl/{train,play}.py` for training and checkpoint playback, plus `random_agent.py` / `zero_agent.py` sanity checks. |
+
+```bash
+cd src/allegro_hand_isaaclab
+export V5_SENSE_ASSET_DIR=$PWD/asset
+python run_sim.py                 # both hands, wave trajectory
+```
+
+👉 Full setup, environment spec, and training guide: **[Isaac Lab Simulation](#-isaac-lab-simulation-allegro_hand_isaaclab)**
+
+> [!NOTE]
+> The Isaac Lab project is **independent of the ROS 2 stack** — it is not built by `colcon` and does not communicate with the hardware. The ROS 2 control workflow below is unchanged.
 
 ---
 
@@ -22,6 +46,7 @@ This is the official release to control **Allegro Hand V5 Sense** with ROS2. It 
 * **333 Hz Control Loop:** Real-time control at 3 ms intervals with `SCHED_FIFO` priority scheduling.
 * **UDP Ethernet Support:** Connect to the hand over Ethernet (UDP) instead of CAN bus.
 * **Remote IP Configuration:** Change the hand's IP address at runtime via a ROS 2 service or GUI (UDP mode only).
+* **Isaac Lab Simulation:** Dual-hand (left + right) V5 Sense scene for NVIDIA Isaac Lab, with a trajectory playback demo and a Gym-registered RL environment. See [Isaac Lab Simulation](#-isaac-lab-simulation-allegro_hand_isaaclab).
 
 ---
 
@@ -54,6 +79,13 @@ cd ~/allegro_ws
 source /opt/ros/humble/setup.bash
 colcon build
 ```
+
+> [!NOTE]
+> `src/allegro_hand_isaaclab` is a **standalone Isaac Lab project, not a ROS 2 package**. `colcon` still discovers it as a plain Python package (`isaaclab-dev`) and builds it with the rest of the workspace. It is harmless, but if you want `colcon build` to skip it entirely, drop a `COLCON_IGNORE` file in that folder:
+> ```bash
+> touch ~/allegro_ws/src/allegro_hand_ros2_V5_Sense/src/allegro_hand_isaaclab/COLCON_IGNORE
+> ```
+> Setup instructions for the simulation side live in [Isaac Lab Simulation](#-isaac-lab-simulation-allegro_hand_isaaclab).
 
 
 
@@ -250,6 +282,7 @@ ros2 service call /allegroHand_0/set_net_config \
 | **`allegro_hand_gui`** | GUI-based control program. |
 | **`allegro_hand_sensor_visualizer`** | Qt GUI node for real-time tactile sensor visualization (launched with `DEMO:=true`). Displays fingertip (4), madi (11), and palm (1) sensor values in kPa. |
 | **`bhand`** | Library for pre-defined grasps. (x86_64 & arm64 all supported)|
+| **`allegro_hand_isaaclab`** | *(Not a ROS 2 package.)* Isaac Lab simulation project — dual-hand USD assets, trajectory playback demo, and a Gym-registered RL environment. See [Isaac Lab Simulation](#-isaac-lab-simulation-allegro_hand_isaaclab). |
 
 ---
 
@@ -618,6 +651,154 @@ After calibration **finishes successfully**, the firmware **redefines the angle 
 
 ---
 
+## 🧪 Isaac Lab Simulation (`allegro_hand_isaaclab`)
+
+![Isaac Lab](https://img.shields.io/badge/Isaac%20Lab-3.0-76b900) ![Isaac Sim](https://img.shields.io/badge/Isaac%20Sim-6.0-76b900) ![Python](https://img.shields.io/badge/python-3.12-3776ab)
+
+`src/allegro_hand_isaaclab` is the **simulation counterpart** of this repository. It spawns the Allegro Hand V5 Sense **left and right hands** in NVIDIA Isaac Lab and carries them through to reinforcement learning training.
+
+It ships two entry points: a zero-setup demo that replays recorded joint trajectories, and a Gym-registered `DirectRLEnv` you can build a task on top of.
+
+> [!IMPORTANT]
+> This project is **independent of the ROS 2 stack**. It does not use ROS 2, does not talk to the physical hand, and is not built by `colcon`. It only needs an Isaac Lab installation.
+
+### 1. Prerequisites
+
+| Requirement | Version |
+| :--- | :--- |
+| **Isaac Lab** | 3.0 |
+| **Isaac Sim** | 6.0 |
+| **Python** | 3.12 |
+| **GPU** | NVIDIA RTX-class GPU (CUDA) |
+
+Install Isaac Lab by following the [official installation guide](https://isaac-sim.github.io/IsaacLab/main/source/setup/installation/index.html). All commands below must be run with the **Python interpreter that has Isaac Lab installed**.
+
+### 2. Setup
+
+```bash
+cd ~/allegro_ws/src/allegro_hand_ros2_V5_Sense/src/allegro_hand_isaaclab
+
+# Point the package at the USD assets shipped in this folder
+export V5_SENSE_ASSET_DIR=$PWD/asset
+
+# Install the extension package (required only for the RL environment)
+python -m pip install -e .
+```
+
+> [!IMPORTANT]
+> **`V5_SENSE_ASSET_DIR` must be set in this workspace layout.** The package resolves the asset folder relative to its own source tree, which assumes the upstream standalone layout. Placed here under `src/`, the default resolves to `<workspace>/asset` — a path that does not exist — and the hands fail to load with `Could not find the Allegro Hand V5 sense (right) USD file`. Add the `export` line to your `~/.bashrc` to make it permanent.
+
+### 3. Demo — Trajectory Playback (`run_sim.py`)
+
+No install and no Gym involved; it drives `Articulation` directly, so it is the fastest way to confirm the hands load and articulate.
+
+```bash
+python run_sim.py                          # both hands, wave trajectory
+python run_sim.py --side right             # right hand only
+python run_sim.py --traj grasp             # close / hold / open
+python run_sim.py --headless --max_steps 500
+```
+
+#### Options
+
+| Argument | Description | Default |
+| :--- | :--- | :--- |
+| **`--side left\|right\|both`** | Which hand(s) to spawn. | `both` |
+| **`--traj <name>`** | Trajectory name under `data/` (without `.npy`), or a file path. | `wave` |
+| **`--speed <float>`** | Playback speed multiplier. | `1.0` |
+| **`--max_steps <int>`** | Stop after N steps. | run until closed |
+| **`--headless`** | Run without opening the Kit viewer. | viewer on |
+
+#### Bundled Trajectories
+
+| File | Shape | Description |
+| :--- | :--- | :--- |
+| **`data/wave.npy`** | `(240, 16)` | Fingers curl in sequence (wave motion). |
+| **`data/grasp.npy`** | `(300, 16)` | Close → hold → open. |
+
+Trajectories are `(T, 16)` flexion arrays in **radians from the neutral pose**, authored at **100 FPS**. Regenerate or add your own with `python scripts/make_trajectories.py`.
+
+### 4. Reinforcement Learning Environment
+
+The environment is registered with Gym as **`Template-V5-Sense-Dual-Hand-Direct-v0`**.
+
+```bash
+# Confirm the task is registered
+python scripts/list_envs.py
+
+# Sanity-check rollouts
+python scripts/random_agent.py --task=Template-V5-Sense-Dual-Hand-Direct-v0 --num_envs=4
+python scripts/zero_agent.py   --task=Template-V5-Sense-Dual-Hand-Direct-v0 --num_envs=4
+
+# Train with skrl PPO
+python scripts/skrl/train.py --task=Template-V5-Sense-Dual-Hand-Direct-v0 --num_envs=4096 --headless
+
+# Replay a trained checkpoint
+python scripts/skrl/play.py --task=Template-V5-Sense-Dual-Hand-Direct-v0 --num_envs=16 --checkpoint <path/to/checkpoint.pt>
+```
+
+#### Environment Specification
+
+| Item | Value |
+| :--- | :--- |
+| **Action space** | `32` — right hand 16 joints, then left hand 16 joints. Actions in `[-1, 1]` map onto each joint's range around its default. |
+| **Observation space** | `64` — `[right pos(16), right vel(16), left pos(16), left vel(16)]`. |
+| **State space** | `0` |
+| **Reward** | **`0` (placeholder)** — the scene is intentionally task-free. |
+| **Termination** | Time limit only (`episode_length_s = 10.0`). |
+| **Sim step / decimation** | `1/120 s`, decimation `4` → **30 Hz** policy rate. |
+| **Default envs** | `64` (override with `--num_envs`), `env_spacing = 1.0 m` |
+| **Base** | Fixed — `palm_link` is pinned to the world by the asset's `global` joint. |
+| **Action smoothing** | Exponential moving average, `act_moving_average = 0.3` |
+| **Reset noise** | Uniform `±0.05 rad` on the default joint positions |
+
+PPO hyperparameters live in `v5_sense_isaaclab_pipeline/tasks/direct/allegro_v5_sense/agents/skrl_ppo_cfg.yaml` (policy/value MLPs `[256, 128, 64]`, ELU).
+
+#### Joint Ordering
+
+The 16 actuated joints are named `joint_0_0` … `joint_15_0` and are resolved in that exact order, so the action/observation layout matches the **[hardware joint numbering](#joint-numbering-order)** used by the ROS 2 driver (index `0~3`, middle `4~7`, ring `8~11`, thumb `12~15`).
+
+> [!WARNING]
+> **Left-hand thumb rotation joint.** In the left USD, `link_12_0`'s joint frame is rotated by ~π relative to the mirrored right frame, so `joint_13_0` is authored with a range of `[1.780, 3.140] rad` and its neutral pose sits at the **upper limit (~3.13 rad)**, not at `0.0`. Using `0.0` makes Isaac Lab reject the articulation with *"default positions out of the limits"*. See `LEFT_THUMB_ROT_JOINT_NEUTRAL` in `v5_sense_isaaclab_pipeline/assets/allegro_hand_v5_sense.py`.
+
+> [!NOTE]
+> Both hands are spawned **fingers-up** by applying a 180° rotation about `Y` (`UPRIGHT_ROT`), with `palm_link` at `0.2 m`. Use the identity quaternion `(1, 0, 0, 0)` instead if you want the original fingers-down pose, e.g. for a hand mounted on the end of an arm. Each hand spans about `0.20 m` across and `0.22 m` along the fingers.
+
+### 5. Two Entry Points at a Glance
+
+| | `run_sim.py` | `Template-V5-Sense-Dual-Hand-Direct-v0` |
+| :--- | :--- | :--- |
+| **Purpose** | Check the hands load and articulate | Reinforcement learning |
+| **Install** | Not required | Needs `pip install -e .` |
+| **Built on** | `SimulationContext` + `Articulation` | Gym-registered `DirectRLEnv` |
+| **Motion** | Replays `data/*.npy` trajectories | Policy emits joint targets |
+| **Hands** | `--side left\|right\|both` | Both, fixed |
+
+### 6. Folder Structure
+
+```text
+src/allegro_hand_isaaclab/
+├── run_sim.py                          // demo entry point (no install, no Gym)
+├── data/                               // playback trajectories (wave.npy, grasp.npy)
+├── asset/
+│   ├── v5_sense_left/                  // left hand USD (converted from URDF)
+│   └── v5_sense_right/                 // right hand USD
+├── scripts/
+│   ├── list_envs.py                    // registered task list
+│   ├── random_agent.py                 // random actions
+│   ├── zero_agent.py                   // zero actions
+│   ├── make_trajectories.py            // regenerate data/*.npy
+│   └── skrl/{train,play}.py            // skrl PPO training / playback
+└── v5_sense_isaaclab_pipeline/
+    ├── assets/                         // ArticulationCfg for both hands
+    └── tasks/direct/allegro_v5_sense/  // DirectRLEnv environment + PPO config
+```
+
+> [!NOTE]
+> `src/allegro_hand_isaaclab/README.md` ([한국어](src/allegro_hand_isaaclab/README.kr.md)) documents the project as an upstream standalone repository. Its paths (`source/v5_sense_isaaclab_pipeline`, `docs/*.md`) refer to that layout — inside this workspace, use the paths and commands shown above.
+
+---
+
 ## 🆙 Firmware Updater
 
 To update the firmware of the Allegro Hand V5 Sense, you can use the Firmware Updater utility.
@@ -635,6 +816,9 @@ To update the firmware of the Allegro Hand V5 Sense, you can use the Firmware Up
 * **Community Forum:** [https://www.allegrohand.com/forum](https://www.allegrohand.com/forum)
 * **Allegro Hand V5 Plus ROS2 Package:** [Wonik Robotics GitHub](https://github.com/Wonikrobotics-git/allegro_hand_ros2_v5)
 * **Allegro Hand V5 Sense Firmware Repository:** [V5_Sense_firmware](https://github.com/Wonikrobotics-git/allegro_hand_V5_sense_firmware)
+* **Isaac Lab Documentation:** [https://isaac-sim.github.io/IsaacLab/](https://isaac-sim.github.io/IsaacLab/)
+* **Isaac Lab Installation Guide:** [Installation](https://isaac-sim.github.io/IsaacLab/main/source/setup/installation/index.html)
+* **skrl Documentation (PPO training):** [https://skrl.readthedocs.io/](https://skrl.readthedocs.io/)
    
 
 ---
